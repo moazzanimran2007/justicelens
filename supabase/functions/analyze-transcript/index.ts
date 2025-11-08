@@ -41,269 +41,167 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', analysisId);
 
-    // Prepare analysis prompts based on selected modules
-    const results: any = {};
+    // Extract comprehensive legal memo information
+    console.log('Extracting legal memo information...');
+    
+    const memoPrompt = `Analyze this parole hearing transcript and extract ALL available information for a legal memo. Extract as much detail as possible from the transcript.`;
 
-    // Innocence Claims Detector
-    if (modules.includes('innocence')) {
-      console.log('Analyzing innocence claims...');
-      const innocencePrompt = `Analyze the following parole hearing transcript and identify ALL explicit or implicit innocence claims.`;
-
-      const innocenceResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: 'You are an expert legal analyst. You MUST use the provided function to return structured analysis.' },
-            { role: 'user', content: `${innocencePrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
-          ],
-          tools: [{
-            type: "function",
-            function: {
-              name: "analyze_innocence_claims",
-              description: "Analyze transcript for innocence claims",
-              parameters: {
-                type: "object",
-                properties: {
-                  detected: { type: "boolean", description: "Whether innocence claims were found" },
-                  count: { type: "number", description: "Number of innocence claims detected" },
-                  examples: { 
-                    type: "array", 
-                    items: { type: "string" },
-                    description: "Direct quotes of innocence claims from the transcript"
-                  },
-                  analysis: { type: "string", description: "Brief explanation of patterns found" }
+    const memoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: 'You are a legal analyst expert. Extract ALL available information from the transcript. Use "Not mentioned" for fields not found in the transcript. You MUST use the provided function to return structured data.' },
+          { role: 'user', content: `${memoPrompt}\n\nTranscript:\n${transcriptText}` }
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "extract_legal_memo",
+            description: "Extract comprehensive legal memo information from parole transcript",
+            parameters: {
+              type: "object",
+              properties: {
+                client_name: { type: "string", description: "Client's full name" },
+                cdcr_number: { type: "string", description: "CDCR number if mentioned" },
+                contact_information: { type: "string", description: "Contact information if mentioned" },
+                date_of_birth: { type: "string", description: "Date of birth if mentioned" },
+                short_summary: { type: "string", description: "3-4 sentences reflecting how they got convicted, their defense, and innocence statements" },
+                evidence_used_to_convict: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "List of evidence items used to convict"
                 },
-                required: ["detected", "count", "examples", "analysis"]
-              }
-            }
-          }],
-          tool_choice: { type: "function", function: { name: "analyze_innocence_claims" } }
-        }),
-      });
-
-      if (innocenceResponse.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
-      }
-      if (innocenceResponse.status === 402) {
-        throw new Error("AI credits exhausted. Please add credits to continue.");
-      }
-      if (!innocenceResponse.ok) {
-        throw new Error(`AI request failed: ${innocenceResponse.status}`);
-      }
-
-      const innocenceData = await innocenceResponse.json();
-      const toolCall = innocenceData.choices[0].message.tool_calls?.[0];
-      
-      if (toolCall?.function?.arguments) {
-        results.innocenceClaims = JSON.parse(toolCall.function.arguments);
-      } else {
-        throw new Error("AI did not return structured innocence analysis");
-      }
-    }
-
-    // Bias & Fairness Audit
-    if (modules.includes('bias')) {
-      console.log('Analyzing bias indicators...');
-      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past.`;
-
-      const biasResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: 'You are an expert in criminal justice reform. You MUST use the provided function to return structured analysis.' },
-            { role: 'user', content: `${biasPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
-          ],
-          tools: [{
-            type: "function",
-            function: {
-              name: "analyze_bias",
-              description: "Analyze transcript for bias and fairness issues",
-              parameters: {
-                type: "object",
-                properties: {
-                  found: { type: "boolean" },
-                  categories: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        type: { type: "string" },
-                        count: { type: "number" },
-                        severity: { type: "string", enum: ["low", "moderate", "high"] },
-                        examples: { type: "array", items: { type: "string" } }
-                      },
-                      required: ["type", "count", "severity", "examples"]
-                    }
-                  },
-                  overall_assessment: { type: "string" }
+                potential_theory_of_case: { type: "string", description: "Theory of what could have gone wrong (mistaken ID, alibi, etc.)" },
+                date_of_crime: { type: "string" },
+                location_of_crime: { type: "string" },
+                date_of_arrest: { type: "string" },
+                date_of_conviction: { type: "string" },
+                convicted_of: { type: "string", description: "Charges/crimes convicted of" },
+                county_of_conviction: { type: "string" },
+                sentence: { type: "string", description: "Sentence details" },
+                parole_eligibility_date: { type: "string" },
+                prior_parole_hearing_result: { type: "string" },
+                client_priors: { type: "string", description: "Prior convictions/criminal history" },
+                trial_court_case_no: { type: "string" },
+                trial_court_judge_dept: { type: "string", description: "Trial court, judge, and department" },
+                trial_attorney: { type: "string" },
+                prosecuting_attorney: { type: "string" },
+                co_defendant: { type: "string" },
+                co_defendant_attorney: { type: "string" },
+                appellate_case_no: { type: "string" },
+                appellate_attorneys: { type: "string" },
+                direct_appeal_date: { type: "string" },
+                direct_appeal_issues: { 
+                  type: "array", 
+                  items: { type: "string" },
+                  description: "Issues raised in direct appeal"
                 },
-                required: ["found", "categories", "overall_assessment"]
-              }
-            }
-          }],
-          tool_choice: { type: "function", function: { name: "analyze_bias" } }
-        }),
-      });
-
-      if (!biasResponse.ok) {
-        throw new Error(`AI request failed: ${biasResponse.status}`);
-      }
-
-      const biasData = await biasResponse.json();
-      const toolCall = biasData.choices[0].message.tool_calls?.[0];
-      
-      if (toolCall?.function?.arguments) {
-        results.biasIndicators = JSON.parse(toolCall.function.arguments);
-      } else {
-        throw new Error("AI did not return structured bias analysis");
-      }
-    }
-
-    // Advocate Fact Sheet
-    if (modules.includes('summary')) {
-      console.log('Generating advocate fact sheet...');
-      const summaryPrompt = `Generate a concise advocate fact sheet extracting offense context, years served, programming, parole factors, and evidence.`;
-
-      const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: 'You are a legal advocate assistant. You MUST use the provided function to return structured data.' },
-            { role: 'user', content: `${summaryPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
-          ],
-          tools: [{
-            type: "function",
-            function: {
-              name: "generate_fact_sheet",
-              description: "Generate advocate fact sheet from transcript",
-              parameters: {
-                type: "object",
-                properties: {
-                  offenseContext: { type: "string" },
-                  yearsServed: { type: "number" },
-                  programming: { type: "string" },
-                  paroleFactors: { type: "string" },
-                  supportingEvidence: { type: "array", items: { type: "string" } },
-                  concerns: { type: "array", items: { type: "string" } }
+                petition_for_review_date: { type: "string" },
+                petition_for_review_issues: { 
+                  type: "array", 
+                  items: { type: "string" }
                 },
-                required: ["offenseContext", "yearsServed", "programming", "paroleFactors", "supportingEvidence", "concerns"]
-              }
-            }
-          }],
-          tool_choice: { type: "function", function: { name: "generate_fact_sheet" } }
-        }),
-      });
-
-      if (!summaryResponse.ok) {
-        throw new Error(`AI request failed: ${summaryResponse.status}`);
-      }
-
-      const summaryData = await summaryResponse.json();
-      const toolCall = summaryData.choices[0].message.tool_calls?.[0];
-      
-      if (toolCall?.function?.arguments) {
-        results.summary = JSON.parse(toolCall.function.arguments);
-      } else {
-        throw new Error("AI did not return structured summary");
-      }
-    }
-
-    // Language Pattern Analysis
-    if (modules.includes('language')) {
-      console.log('Analyzing language patterns...');
-      const languagePrompt = `Analyze usage and context of key terms: "insight", "remorse", and "accountability" in the transcript.`;
-
-      const languageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: 'You are a linguistic analyst. You MUST use the provided function to return structured analysis.' },
-            { role: 'user', content: `${languagePrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
-          ],
-          tools: [{
-            type: "function",
-            function: {
-              name: "analyze_language_patterns",
-              description: "Analyze language pattern usage in transcript",
-              parameters: {
-                type: "object",
-                properties: {
-                  insight: {
-                    type: "object",
-                    properties: {
-                      frequency: { type: "number" },
-                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
-                      examples: { type: "array", items: { type: "string" } }
-                    },
-                    required: ["frequency", "context", "examples"]
+                habeas_petition_date: { type: "string" },
+                habeas_petition_issues: { 
+                  type: "array", 
+                  items: { type: "string" }
+                },
+                prosecution_presented: { type: "string", description: "Summary of prosecution's case presentation" },
+                defense_presented: { type: "string", description: "Summary of defense's case presentation" },
+                wrongful_conviction_issues: {
+                  type: "array",
+                  items: { 
+                    type: "string",
+                    enum: [
+                      "Eyewitness identifications",
+                      "Shaken Baby Syndrome Theory",
+                      "Confessions",
+                      "Abusive Head Trauma Theory",
+                      "Bite mark evidence",
+                      "Ballistics analysis",
+                      "Hair comparison analysis",
+                      "Shoe print analysis",
+                      "Fingerprint analysis",
+                      "GPS/Cell Phone Tower Data",
+                      "Arson/explosives testimony",
+                      "Fiber comparison",
+                      "Tool mark analysis",
+                      "Gang evidence",
+                      "Tire track analysis",
+                      "Blood Spatter",
+                      "DNA",
+                      "Testimony of Children",
+                      "Psychological Evaluations",
+                      "Scent Detection Dogs"
+                    ]
                   },
-                  remorse: {
-                    type: "object",
-                    properties: {
-                      frequency: { type: "number" },
-                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
-                      examples: { type: "array", items: { type: "string" } }
-                    },
-                    required: ["frequency", "context", "examples"]
-                  },
-                  accountability: {
-                    type: "object",
-                    properties: {
-                      frequency: { type: "number" },
-                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
-                      examples: { type: "array", items: { type: "string" } }
-                    },
-                    required: ["frequency", "context", "examples"]
+                  description: "List of wrongful conviction issues present in the case"
+                },
+                innocence_claims: {
+                  type: "object",
+                  properties: {
+                    detected: { type: "boolean" },
+                    count: { type: "number" },
+                    examples: { type: "array", items: { type: "string" } },
+                    analysis: { type: "string" }
                   }
-                },
-                required: ["insight", "remorse", "accountability"]
-              }
+                }
+              },
+              required: [
+                "client_name", "short_summary", "evidence_used_to_convict", 
+                "potential_theory_of_case", "prosecution_presented", 
+                "defense_presented", "wrongful_conviction_issues", "innocence_claims"
+              ]
             }
-          }],
-          tool_choice: { type: "function", function: { name: "analyze_language_patterns" } }
-        }),
-      });
+          }
+        }],
+        tool_choice: { type: "function", function: { name: "extract_legal_memo" } }
+      }),
+    });
 
-      if (!languageResponse.ok) {
-        throw new Error(`AI request failed: ${languageResponse.status}`);
-      }
-
-      const languageData = await languageResponse.json();
-      const toolCall = languageData.choices[0].message.tool_calls?.[0];
-      
-      if (toolCall?.function?.arguments) {
-        results.languageAnalysis = JSON.parse(toolCall.function.arguments);
-      } else {
-        throw new Error("AI did not return structured language analysis");
-      }
+    if (memoResponse.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    }
+    if (memoResponse.status === 402) {
+      throw new Error("AI credits exhausted. Please add credits to continue.");
+    }
+    if (!memoResponse.ok) {
+      throw new Error(`AI request failed: ${memoResponse.status}`);
     }
 
-    // Update analysis with results
+    const memoData = await memoResponse.json();
+    const toolCall = memoData.choices[0].message.tool_calls?.[0];
+    
+    if (!toolCall?.function?.arguments) {
+      throw new Error("AI did not return structured memo data");
+    }
+
+    const legalMemo = JSON.parse(toolCall.function.arguments);
+
+    // Store legal memo in database
+    const { error: memoInsertError } = await supabase
+      .from('legal_memos')
+      .insert({
+        analysis_id: analysisId,
+        ...legalMemo
+      });
+
+    if (memoInsertError) {
+      console.error('Error inserting legal memo:', memoInsertError);
+      throw memoInsertError;
+    }
+
+    // Update analysis with completion status
     const { error: updateError } = await supabase
       .from('analyses')
       .update({
         status: 'completed',
-        results: results
+        results: { memo_extracted: true }
       })
       .eq('id', analysisId);
 
@@ -311,10 +209,10 @@ serve(async (req) => {
       throw updateError;
     }
 
-    console.log('Analysis completed successfully');
+    console.log('Legal memo extraction completed successfully');
 
     return new Response(
-      JSON.stringify({ success: true, results }),
+      JSON.stringify({ success: true, legalMemo }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
