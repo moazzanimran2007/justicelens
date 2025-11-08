@@ -9,6 +9,7 @@ import { User, Session } from "@supabase/supabase-js";
 import MultiFileUpload from "@/components/MultiFileUpload";
 import ModuleSelector from "@/components/ModuleSelector";
 import AnalysisResults from "@/components/AnalysisResults";
+import { extractTextFromPdf } from "@/lib/pdf-text";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -103,16 +104,6 @@ const Index = () => {
           description: `Uploading ${file.name}...`,
         });
 
-        // Check if file is PDF
-        if (file.type === 'application/pdf') {
-          toast({
-            title: `Skipping ${file.name}`,
-            description: "PDF files require text extraction. Please use .txt files.",
-            variant: "destructive",
-          });
-          failedFiles.push(file.name);
-          continue;
-        }
 
         try {
           const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -124,8 +115,17 @@ const Index = () => {
 
           if (uploadError) throw uploadError;
 
-          // Read file content
-          const text = await file.text();
+          // Read file content (handle PDF or TXT)
+          let text: string;
+          if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            toast({ title: `Extracting text`, description: `Reading ${file.name}...` });
+            text = await extractTextFromPdf(file);
+            if (!text || text.trim().length < 20) {
+              throw new Error("No text found in PDF. If this is a scanned PDF, OCR is not yet supported.");
+            }
+          } else {
+            text = await file.text();
+          }
 
           // Create analysis record
           const { data: analysisData, error: insertError } = await supabase
