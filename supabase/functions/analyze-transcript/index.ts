@@ -47,22 +47,7 @@ serve(async (req) => {
     // Innocence Claims Detector
     if (modules.includes('innocence')) {
       console.log('Analyzing innocence claims...');
-      const innocencePrompt = `Analyze the following parole hearing transcript and identify ALL explicit or implicit innocence claims. Look for:
-- Direct statements like "I maintain my innocence" or "I didn't do it"
-- Implicit claims like "I was wrongfully convicted" or "the evidence doesn't support..."
-- Contextual denials or minimization of guilt
-- Paraphrased claims of innocence
-
-Transcript:
-${transcriptText}
-
-Return a JSON object with:
-{
-  "detected": boolean,
-  "count": number,
-  "examples": [array of quoted text excerpts],
-  "analysis": "brief explanation of patterns found"
-}`;
+      const innocencePrompt = `Analyze the following parole hearing transcript and identify ALL explicit or implicit innocence claims.`;
 
       const innocenceResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -73,10 +58,31 @@ Return a JSON object with:
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are an expert legal analyst specializing in criminal justice and parole hearings.' },
-            { role: 'user', content: innocencePrompt }
+            { role: 'system', content: 'You are an expert legal analyst. You MUST use the provided function to return structured analysis.' },
+            { role: 'user', content: `${innocencePrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
           ],
-          response_format: { type: "json_object" }
+          tools: [{
+            type: "function",
+            function: {
+              name: "analyze_innocence_claims",
+              description: "Analyze transcript for innocence claims",
+              parameters: {
+                type: "object",
+                properties: {
+                  detected: { type: "boolean", description: "Whether innocence claims were found" },
+                  count: { type: "number", description: "Number of innocence claims detected" },
+                  examples: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "Direct quotes of innocence claims from the transcript"
+                  },
+                  analysis: { type: "string", description: "Brief explanation of patterns found" }
+                },
+                required: ["detected", "count", "examples", "analysis"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "analyze_innocence_claims" } }
         }),
       });
 
@@ -91,45 +97,19 @@ Return a JSON object with:
       }
 
       const innocenceData = await innocenceResponse.json();
-      let contentText = innocenceData.choices[0].message.content;
+      const toolCall = innocenceData.choices[0].message.tool_calls?.[0];
       
-      // Strip markdown code blocks if present
-      contentText = contentText.trim();
-      if (contentText.startsWith('```json')) {
-        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
-      } else if (contentText.startsWith('```')) {
-        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      if (toolCall?.function?.arguments) {
+        results.innocenceClaims = JSON.parse(toolCall.function.arguments);
+      } else {
+        throw new Error("AI did not return structured innocence analysis");
       }
-      
-      results.innocenceClaims = JSON.parse(contentText);
     }
 
     // Bias & Fairness Audit
     if (modules.includes('bias')) {
       console.log('Analyzing bias indicators...');
-      const biasPrompt = `Analyze the following parole hearing transcript for bias and fairness issues. Look for:
-- Victim-centric framing that doesn't account for rehabilitation
-- Comments about demeanor, appearance, or body language
-- Use of "lack of insight" or "lack of remorse" language
-- Stigmatizing language or proxy language for race/class
-- Focus on unchangeable past vs. current rehabilitation
-
-Transcript:
-${transcriptText}
-
-Return a JSON object with:
-{
-  "found": boolean,
-  "categories": [
-    {
-      "type": "category name",
-      "count": number,
-      "severity": "low|moderate|high",
-      "examples": ["quote 1", "quote 2"]
-    }
-  ],
-  "overall_assessment": "brief summary"
-}`;
+      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past.`;
 
       const biasResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -140,10 +120,38 @@ Return a JSON object with:
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are an expert in criminal justice reform and bias detection in legal proceedings.' },
-            { role: 'user', content: biasPrompt }
+            { role: 'system', content: 'You are an expert in criminal justice reform. You MUST use the provided function to return structured analysis.' },
+            { role: 'user', content: `${biasPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
           ],
-          response_format: { type: "json_object" }
+          tools: [{
+            type: "function",
+            function: {
+              name: "analyze_bias",
+              description: "Analyze transcript for bias and fairness issues",
+              parameters: {
+                type: "object",
+                properties: {
+                  found: { type: "boolean" },
+                  categories: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        type: { type: "string" },
+                        count: { type: "number" },
+                        severity: { type: "string", enum: ["low", "moderate", "high"] },
+                        examples: { type: "array", items: { type: "string" } }
+                      },
+                      required: ["type", "count", "severity", "examples"]
+                    }
+                  },
+                  overall_assessment: { type: "string" }
+                },
+                required: ["found", "categories", "overall_assessment"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "analyze_bias" } }
         }),
       });
 
@@ -152,41 +160,19 @@ Return a JSON object with:
       }
 
       const biasData = await biasResponse.json();
-      let contentText = biasData.choices[0].message.content;
+      const toolCall = biasData.choices[0].message.tool_calls?.[0];
       
-      // Strip markdown code blocks if present
-      contentText = contentText.trim();
-      if (contentText.startsWith('```json')) {
-        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
-      } else if (contentText.startsWith('```')) {
-        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      if (toolCall?.function?.arguments) {
+        results.biasIndicators = JSON.parse(toolCall.function.arguments);
+      } else {
+        throw new Error("AI did not return structured bias analysis");
       }
-      
-      results.biasIndicators = JSON.parse(contentText);
     }
 
     // Advocate Fact Sheet
     if (modules.includes('summary')) {
       console.log('Generating advocate fact sheet...');
-      const summaryPrompt = `Generate a concise advocate fact sheet from this parole hearing transcript. Extract:
-- Offense context and conviction details
-- Years served and time in custody
-- Programming completed (education, therapy, vocational training)
-- Parole factors cited by the board
-- Any evidence supporting or contradicting claims
-
-Transcript:
-${transcriptText}
-
-Return a JSON object with:
-{
-  "offenseContext": "brief description",
-  "yearsServed": number,
-  "programming": "summary of programs completed",
-  "paroleFactors": "key factors mentioned",
-  "supportingEvidence": ["evidence point 1", "evidence point 2"],
-  "concerns": ["concern 1", "concern 2"]
-}`;
+      const summaryPrompt = `Generate a concise advocate fact sheet extracting offense context, years served, programming, parole factors, and evidence.`;
 
       const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -197,10 +183,29 @@ Return a JSON object with:
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are a legal advocate assistant preparing materials for parole cases.' },
-            { role: 'user', content: summaryPrompt }
+            { role: 'system', content: 'You are a legal advocate assistant. You MUST use the provided function to return structured data.' },
+            { role: 'user', content: `${summaryPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
           ],
-          response_format: { type: "json_object" }
+          tools: [{
+            type: "function",
+            function: {
+              name: "generate_fact_sheet",
+              description: "Generate advocate fact sheet from transcript",
+              parameters: {
+                type: "object",
+                properties: {
+                  offenseContext: { type: "string" },
+                  yearsServed: { type: "number" },
+                  programming: { type: "string" },
+                  paroleFactors: { type: "string" },
+                  supportingEvidence: { type: "array", items: { type: "string" } },
+                  concerns: { type: "array", items: { type: "string" } }
+                },
+                required: ["offenseContext", "yearsServed", "programming", "paroleFactors", "supportingEvidence", "concerns"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "generate_fact_sheet" } }
         }),
       });
 
@@ -209,50 +214,19 @@ Return a JSON object with:
       }
 
       const summaryData = await summaryResponse.json();
-      let contentText = summaryData.choices[0].message.content;
+      const toolCall = summaryData.choices[0].message.tool_calls?.[0];
       
-      // Strip markdown code blocks if present
-      contentText = contentText.trim();
-      if (contentText.startsWith('```json')) {
-        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
-      } else if (contentText.startsWith('```')) {
-        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      if (toolCall?.function?.arguments) {
+        results.summary = JSON.parse(toolCall.function.arguments);
+      } else {
+        throw new Error("AI did not return structured summary");
       }
-      
-      results.summary = JSON.parse(contentText);
     }
 
     // Language Pattern Analysis
     if (modules.includes('language')) {
       console.log('Analyzing language patterns...');
-      const languagePrompt = `Analyze how key terms are used in this parole hearing transcript:
-- "insight" and related terms
-- "remorse" and related terms
-- "accountability" and related terms
-
-Count frequency and analyze context (positive, negative, questioning).
-
-Transcript:
-${transcriptText}
-
-Return a JSON object with:
-{
-  "insight": {
-    "frequency": number,
-    "context": "positive|negative|mixed",
-    "examples": ["usage example 1", "usage example 2"]
-  },
-  "remorse": {
-    "frequency": number,
-    "context": "positive|negative|mixed",
-    "examples": ["usage example 1", "usage example 2"]
-  },
-  "accountability": {
-    "frequency": number,
-    "context": "positive|negative|mixed",
-    "examples": ["usage example 1", "usage example 2"]
-  }
-}`;
+      const languagePrompt = `Analyze usage and context of key terms: "insight", "remorse", and "accountability" in the transcript.`;
 
       const languageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -263,10 +237,50 @@ Return a JSON object with:
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are a linguistic analyst specializing in criminal justice language.' },
-            { role: 'user', content: languagePrompt }
+            { role: 'system', content: 'You are a linguistic analyst. You MUST use the provided function to return structured analysis.' },
+            { role: 'user', content: `${languagePrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
           ],
-          response_format: { type: "json_object" }
+          tools: [{
+            type: "function",
+            function: {
+              name: "analyze_language_patterns",
+              description: "Analyze language pattern usage in transcript",
+              parameters: {
+                type: "object",
+                properties: {
+                  insight: {
+                    type: "object",
+                    properties: {
+                      frequency: { type: "number" },
+                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
+                      examples: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["frequency", "context", "examples"]
+                  },
+                  remorse: {
+                    type: "object",
+                    properties: {
+                      frequency: { type: "number" },
+                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
+                      examples: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["frequency", "context", "examples"]
+                  },
+                  accountability: {
+                    type: "object",
+                    properties: {
+                      frequency: { type: "number" },
+                      context: { type: "string", enum: ["positive", "negative", "mixed"] },
+                      examples: { type: "array", items: { type: "string" } }
+                    },
+                    required: ["frequency", "context", "examples"]
+                  }
+                },
+                required: ["insight", "remorse", "accountability"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "analyze_language_patterns" } }
         }),
       });
 
@@ -275,17 +289,13 @@ Return a JSON object with:
       }
 
       const languageData = await languageResponse.json();
-      let contentText = languageData.choices[0].message.content;
+      const toolCall = languageData.choices[0].message.tool_calls?.[0];
       
-      // Strip markdown code blocks if present
-      contentText = contentText.trim();
-      if (contentText.startsWith('```json')) {
-        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
-      } else if (contentText.startsWith('```')) {
-        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      if (toolCall?.function?.arguments) {
+        results.languageAnalysis = JSON.parse(toolCall.function.arguments);
+      } else {
+        throw new Error("AI did not return structured language analysis");
       }
-      
-      results.languageAnalysis = JSON.parse(contentText);
     }
 
     // Update analysis with results

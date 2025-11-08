@@ -94,6 +94,18 @@ const Index = () => {
       // Process first file for now (can be extended for batch processing)
       const file = files[0];
       const fileExt = file.name.split('.').pop();
+      
+      // Check if file is PDF - need to inform user about limitation
+      if (file.type === 'application/pdf') {
+        toast({
+          title: "PDF files require text extraction",
+          description: "For best results, please convert your PDF to plain text (.txt) first, or copy/paste the transcript content into a text file.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+
       const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
 
       // Upload file to storage
