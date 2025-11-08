@@ -1,10 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm';
-
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,18 +16,15 @@ serve(async (req) => {
   let analysisId: string | undefined;
   let transcriptText: string;
   let modules: string[];
-  let filePath: string | undefined;
   
   try {
     const body = await req.json();
     analysisId = body.analysisId;
     transcriptText = body.transcriptText;
     modules = body.modules;
-    filePath = body.filePath;
     
     console.log('Starting analysis for ID:', analysisId);
     console.log('Selected modules:', modules);
-    console.log('File path:', filePath);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -41,50 +34,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // If file path is provided and it's a PDF, extract text
-    if (filePath && filePath.toLowerCase().endsWith('.pdf')) {
-      console.log('Detected PDF file, extracting text...');
-      try {
-        // Download PDF from storage
-        const { data: fileData, error: downloadError } = await supabase.storage
-          .from('transcripts')
-          .download(filePath);
-        
-        if (downloadError) throw downloadError;
-        
-        // Convert blob to array buffer
-        const arrayBuffer = await fileData.arrayBuffer();
-        
-        // Extract text from PDF using pdfjs
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        const pdfDoc = await loadingTask.promise;
-        
-        let extractedText = '';
-        const numPages = pdfDoc.numPages;
-        console.log(`Extracting text from ${numPages} pages...`);
-        
-        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-          const page = await pdfDoc.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-          extractedText += pageText + '\n\n';
-        }
-        
-        transcriptText = extractedText.trim();
-        console.log(`Successfully extracted ${transcriptText.length} characters from PDF`);
-        
-        if (!transcriptText || transcriptText.length < 100) {
-          throw new Error('PDF appears to be empty or contains only images. OCR not yet implemented.');
-        }
-      } catch (pdfError) {
-        console.error('PDF extraction error:', pdfError);
-        const errorMessage = pdfError instanceof Error ? pdfError.message : 'Unknown error';
-        throw new Error(`Failed to extract text from PDF: ${errorMessage}`);
-      }
-    }
 
     // Update status to processing
     await supabase

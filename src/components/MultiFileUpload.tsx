@@ -12,14 +12,11 @@ const MultiFileUpload = ({ files, onFilesSelect }: MultiFileUploadProps) => {
   const { toast } = useToast();
 
   const validateFile = (file: File): boolean => {
-    // Accept .txt and .pdf files
-    const validExtensions = [".txt", ".pdf"];
-    const isValid = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
-    
-    if (!isValid) {
+    // For now, only accept .txt files until PDF parsing is implemented
+    if (!file.name.endsWith(".txt")) {
       toast({
-        title: "File type not supported",
-        description: `${file.name}: Please use .txt or .pdf files.`,
+        title: "File type not supported yet",
+        description: `${file.name}: Please use .txt files. PDF parsing coming soon.`,
         variant: "destructive",
       });
       return false;
@@ -85,7 +82,7 @@ const MultiFileUpload = ({ files, onFilesSelect }: MultiFileUploadProps) => {
           type="file"
           id="file-upload"
           className="hidden"
-          accept=".txt,.pdf"
+          accept=".txt"
           multiple
           onChange={handleFileInput}
         />
@@ -102,7 +99,7 @@ const MultiFileUpload = ({ files, onFilesSelect }: MultiFileUploadProps) => {
                 Drag and drop your files here, or click to browse
               </p>
               <p className="text-xs text-muted-foreground">
-                Supports TXT and PDF files up to 20MB • OCR enabled for scanned PDFs
+                Currently supports TXT files up to 20MB • PDF support coming soon
               </p>
             </div>
           </div>
