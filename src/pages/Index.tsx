@@ -89,127 +89,167 @@ const Index = () => {
     }
 
     setIsUploading(true);
+    const allResults: any[] = [];
+    const failedFiles: string[] = [];
 
     try {
-      // Process first file for now (can be extended for batch processing)
-      const file = files[0];
-      const fileExt = file.name.split('.').pop();
-      
-      // Check if file is PDF - need to inform user about limitation
-      if (file.type === 'application/pdf') {
+      // Process each file sequentially
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        
         toast({
-          title: "PDF files require text extraction",
-          description: "For best results, please convert your PDF to plain text (.txt) first, or copy/paste the transcript content into a text file.",
-          variant: "destructive",
+          title: `Processing file ${i + 1} of ${files.length}`,
+          description: `Uploading ${file.name}...`,
         });
-        setIsUploading(false);
-        return;
+
+        // Check if file is PDF
+        if (file.type === 'application/pdf') {
+          toast({
+            title: `Skipping ${file.name}`,
+            description: "PDF files require text extraction. Please use .txt files.",
+            variant: "destructive",
+          });
+          failedFiles.push(file.name);
+          continue;
+        }
+
+        try {
+          const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+          // Upload file to storage
+          const { error: uploadError } = await supabase.storage
+            .from('transcripts')
+            .upload(filePath, file);
+
+          if (uploadError) throw uploadError;
+
+          // Read file content
+          const text = await file.text();
+
+          // Create analysis record
+          const { data: analysisData, error: insertError } = await supabase
+            .from('analyses')
+            .insert({
+              user_id: user.id,
+              file_name: file.name,
+              file_path: filePath,
+              file_size: file.size,
+              analysis_modules: selectedModules,
+              status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+
+          if (i === 0) {
+            setIsUploading(false);
+            setIsAnalyzing(true);
+          }
+
+          toast({
+            title: `Analyzing ${i + 1} of ${files.length}`,
+            description: `Processing ${file.name}...`,
+          });
+
+          // Call edge function for analysis
+          const { error: functionError } = await supabase.functions.invoke('analyze-transcript', {
+            body: {
+              analysisId: analysisData.id,
+              transcriptText: text,
+              modules: selectedModules
+            }
+          });
+
+          if (functionError) {
+            if (functionError.message.includes("Rate limit")) {
+              toast({
+                title: `Rate limit for ${file.name}`,
+                description: "Waiting before continuing...",
+                variant: "destructive",
+              });
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              continue;
+            } else if (functionError.message.includes("credits")) {
+              toast({
+                title: "Credits exhausted",
+                description: "Cannot continue batch processing.",
+                variant: "destructive",
+              });
+              break;
+            } else {
+              throw functionError;
+            }
+          }
+
+          // Poll for this file's results
+          const result = await new Promise<any>((resolve, reject) => {
+            const pollInterval = setInterval(async () => {
+              const { data: updatedAnalysis, error: fetchError } = await supabase
+                .from('analyses')
+                .select('*')
+                .eq('id', analysisData.id)
+                .single();
+
+              if (fetchError) {
+                clearInterval(pollInterval);
+                reject(fetchError);
+                return;
+              }
+
+              if (updatedAnalysis.status === 'completed') {
+                clearInterval(pollInterval);
+                resolve(updatedAnalysis.results);
+              } else if (updatedAnalysis.status === 'failed') {
+                clearInterval(pollInterval);
+                reject(new Error(updatedAnalysis.error_message || "Analysis failed"));
+              }
+            }, 2000);
+
+            // Timeout after 2 minutes per file
+            setTimeout(() => {
+              clearInterval(pollInterval);
+              reject(new Error("Analysis timeout"));
+            }, 120000);
+          });
+
+          allResults.push({ fileName: file.name, results: result });
+        } catch (fileError) {
+          console.error(`Error processing ${file.name}:`, fileError);
+          failedFiles.push(file.name);
+          toast({
+            title: `Failed to process ${file.name}`,
+            description: fileError instanceof Error ? fileError.message : "Unknown error",
+            variant: "destructive",
+          });
+        }
       }
-
-      const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-
-      // Upload file to storage
-      const { error: uploadError } = await supabase.storage
-        .from('transcripts')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Read file content
-      const text = await file.text();
-
-      // Create analysis record
-      const { data: analysisData, error: insertError } = await supabase
-        .from('analyses')
-        .insert({
-          user_id: user.id,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          analysis_modules: selectedModules,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
 
       setIsUploading(false);
-      setIsAnalyzing(true);
+      setIsAnalyzing(false);
 
-      // Call edge function for analysis
-      const { error: functionError } = await supabase.functions.invoke('analyze-transcript', {
-        body: {
-          analysisId: analysisData.id,
-          transcriptText: text,
-          modules: selectedModules
-        }
-      });
-
-      if (functionError) {
-        if (functionError.message.includes("Rate limit")) {
-          toast({
-            title: "Rate limit exceeded",
-            description: "Please try again in a few moments.",
-            variant: "destructive",
-          });
-        } else if (functionError.message.includes("credits")) {
-          toast({
-            title: "Credits exhausted",
-            description: "Please add AI credits to continue analysis.",
-            variant: "destructive",
-          });
+      if (allResults.length > 0) {
+        // For single file, show direct results
+        if (allResults.length === 1) {
+          setAnalysis(allResults[0].results);
         } else {
-          throw functionError;
+          // For multiple files, combine results
+          setAnalysis({ files: allResults });
         }
-        setIsAnalyzing(false);
-        return;
+
+        toast({
+          title: "Batch analysis complete",
+          description: `Successfully analyzed ${allResults.length} of ${files.length} file(s)`,
+        });
+        setFiles([]);
+      } else {
+        toast({
+          title: "All files failed",
+          description: "No files were successfully analyzed.",
+          variant: "destructive",
+        });
       }
-
-      // Poll for results
-      const pollInterval = setInterval(async () => {
-        const { data: updatedAnalysis, error: fetchError } = await supabase
-          .from('analyses')
-          .select('*')
-          .eq('id', analysisData.id)
-          .single();
-
-        if (fetchError) {
-          clearInterval(pollInterval);
-          throw fetchError;
-        }
-
-        if (updatedAnalysis.status === 'completed') {
-          clearInterval(pollInterval);
-          setAnalysis(updatedAnalysis.results);
-          setIsAnalyzing(false);
-          toast({
-            title: "Analysis complete",
-            description: "Your transcript has been analyzed successfully",
-          });
-        } else if (updatedAnalysis.status === 'failed') {
-          clearInterval(pollInterval);
-          setIsAnalyzing(false);
-          toast({
-            title: "Analysis failed",
-            description: updatedAnalysis.error_message || "An error occurred during analysis",
-            variant: "destructive",
-          });
-        }
-      }, 2000);
-
-      // Timeout after 2 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (isAnalyzing) {
-          setIsAnalyzing(false);
-          toast({
-            title: "Analysis timeout",
-            description: "The analysis is taking longer than expected. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }, 120000);
 
     } catch (error) {
       console.error('Analysis error:', error);
@@ -217,7 +257,7 @@ const Index = () => {
       setIsAnalyzing(false);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to analyze transcript",
+        description: error instanceof Error ? error.message : "Failed to analyze transcripts",
         variant: "destructive",
       });
     }
