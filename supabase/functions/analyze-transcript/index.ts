@@ -12,8 +12,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Parse request body once at the start
+  let analysisId: string | undefined;
+  let transcriptText: string;
+  let modules: string[];
+  
   try {
-    const { analysisId, transcriptText, modules } = await req.json();
+    const body = await req.json();
+    analysisId = body.analysisId;
+    transcriptText = body.transcriptText;
+    modules = body.modules;
     
     console.log('Starting analysis for ID:', analysisId);
     console.log('Selected modules:', modules);
@@ -83,7 +91,17 @@ Return a JSON object with:
       }
 
       const innocenceData = await innocenceResponse.json();
-      results.innocenceClaims = JSON.parse(innocenceData.choices[0].message.content);
+      let contentText = innocenceData.choices[0].message.content;
+      
+      // Strip markdown code blocks if present
+      contentText = contentText.trim();
+      if (contentText.startsWith('```json')) {
+        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (contentText.startsWith('```')) {
+        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      results.innocenceClaims = JSON.parse(contentText);
     }
 
     // Bias & Fairness Audit
@@ -134,7 +152,17 @@ Return a JSON object with:
       }
 
       const biasData = await biasResponse.json();
-      results.biasIndicators = JSON.parse(biasData.choices[0].message.content);
+      let contentText = biasData.choices[0].message.content;
+      
+      // Strip markdown code blocks if present
+      contentText = contentText.trim();
+      if (contentText.startsWith('```json')) {
+        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (contentText.startsWith('```')) {
+        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      results.biasIndicators = JSON.parse(contentText);
     }
 
     // Advocate Fact Sheet
@@ -181,7 +209,17 @@ Return a JSON object with:
       }
 
       const summaryData = await summaryResponse.json();
-      results.summary = JSON.parse(summaryData.choices[0].message.content);
+      let contentText = summaryData.choices[0].message.content;
+      
+      // Strip markdown code blocks if present
+      contentText = contentText.trim();
+      if (contentText.startsWith('```json')) {
+        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (contentText.startsWith('```')) {
+        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      results.summary = JSON.parse(contentText);
     }
 
     // Language Pattern Analysis
@@ -237,7 +275,17 @@ Return a JSON object with:
       }
 
       const languageData = await languageResponse.json();
-      results.languageAnalysis = JSON.parse(languageData.choices[0].message.content);
+      let contentText = languageData.choices[0].message.content;
+      
+      // Strip markdown code blocks if present
+      contentText = contentText.trim();
+      if (contentText.startsWith('```json')) {
+        contentText = contentText.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (contentText.startsWith('```')) {
+        contentText = contentText.replace(/^```\n/, '').replace(/\n```$/, '');
+      }
+      
+      results.languageAnalysis = JSON.parse(contentText);
     }
 
     // Update analysis with results
@@ -265,22 +313,23 @@ Return a JSON object with:
   } catch (error) {
     console.error('Error in analyze-transcript function:', error);
     
-    // Try to update the analysis status to failed
-    try {
-      const { analysisId } = await req.json();
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      await supabase
-        .from('analyses')
-        .update({
-          status: 'failed',
-          error_message: error instanceof Error ? error.message : 'Unknown error'
-        })
-        .eq('id', analysisId);
-    } catch (updateError) {
-      console.error('Failed to update analysis status:', updateError);
+    // Update the analysis status to failed if we have the analysisId
+    if (analysisId) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        await supabase
+          .from('analyses')
+          .update({
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : 'Unknown error'
+          })
+          .eq('id', analysisId);
+      } catch (updateError) {
+        console.error('Failed to update analysis status:', updateError);
+      }
     }
 
     return new Response(
