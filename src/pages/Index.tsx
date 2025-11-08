@@ -103,17 +103,6 @@ const Index = () => {
           description: `Uploading ${file.name}...`,
         });
 
-        // Check if file is PDF
-        if (file.type === 'application/pdf') {
-          toast({
-            title: `Skipping ${file.name}`,
-            description: "PDF files require text extraction. Please use .txt files.",
-            variant: "destructive",
-          });
-          failedFiles.push(file.name);
-          continue;
-        }
-
         try {
           const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
 
@@ -124,8 +113,12 @@ const Index = () => {
 
           if (uploadError) throw uploadError;
 
-          // Read file content
-          const text = await file.text();
+          // Read file content (for txt files)
+          let text = '';
+          if (file.name.toLowerCase().endsWith('.txt')) {
+            text = await file.text();
+          }
+          // For PDFs, the edge function will handle text extraction
 
           // Create analysis record
           const { data: analysisData, error: insertError } = await supabase
@@ -158,6 +151,7 @@ const Index = () => {
             body: {
               analysisId: analysisData.id,
               transcriptText: text,
+              filePath: filePath,
               modules: selectedModules
             }
           });
