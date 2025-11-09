@@ -23,16 +23,7 @@ export const LegalMemoPrintView = ({ memoData, disabled }: LegalMemoPrintViewPro
       });
 
       if (error) {
-        console.error('Edge function error:', error);
-        // Extract the actual error message from the edge function response
-        const errorMessage = error.message || JSON.stringify(error);
-        
-        // Check if it's a credits/payment error
-        if (errorMessage.includes('payment_required') || errorMessage.includes('Not enough credits')) {
-          throw new Error('AI credits exhausted. Please add credits to your Lovable workspace in Settings → Workspace → Usage to continue generating PDFs.');
-        }
-        
-        throw new Error(errorMessage);
+        throw error;
       }
 
       const { formattedContent } = data;
