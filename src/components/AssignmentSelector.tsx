@@ -36,6 +36,10 @@ export const AssignmentSelector = ({
     fetchTeamMembers();
   }, []);
 
+  useEffect(() => {
+    setSelectedUser(currentAssignee);
+  }, [currentAssignee]);
+
   const fetchTeamMembers = async () => {
     const { data, error } = await supabase
       .from("profiles")
