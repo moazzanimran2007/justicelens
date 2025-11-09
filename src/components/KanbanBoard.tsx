@@ -48,6 +48,27 @@ export const KanbanBoard = ({
   useEffect(() => {
     fetchStages();
     fetchCases();
+
+    // Subscribe to real-time updates for analyses
+    const channel = supabase
+      .channel('analyses-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'analyses'
+        },
+        (payload) => {
+          console.log('Analyses change detected:', payload);
+          fetchCases(); // Refetch all cases when any change occurs
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchStages = async () => {
