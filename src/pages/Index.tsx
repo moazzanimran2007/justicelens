@@ -249,7 +249,7 @@ const Index = () => {
                 return;
               }
 
-              if (updatedAnalysis.status === 'completed') {
+              if (updatedAnalysis.results) {
                 clearInterval(pollInterval);
                 resolve({ results: updatedAnalysis.results, analysisId: analysisData.id });
               } else if (updatedAnalysis.status === 'failed') {

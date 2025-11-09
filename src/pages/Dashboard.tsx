@@ -19,8 +19,8 @@ import { Badge } from "@/components/ui/badge";
 
 interface DashboardStats {
   totalCases: number;
-  pendingCases: number;
-  completedCases: number;
+  processingCases: number;
+  stageStats: Record<string, number>;
   highPriorityCases: number;
 }
 
@@ -31,6 +31,10 @@ interface RecentCase {
   status: string;
   priority: string;
   created_at: string;
+  stage: {
+    name: string;
+    color: string;
+  } | null;
 }
 
 interface RecentActivity {
@@ -50,10 +54,11 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<DashboardStats>({
     totalCases: 0,
-    pendingCases: 0,
-    completedCases: 0,
+    processingCases: 0,
+    stageStats: {},
     highPriorityCases: 0,
   });
+  const [stages, setStages] = useState<any[]>([]);
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
@@ -81,29 +86,55 @@ export default function Dashboard() {
     
     setProfile(profileData);
 
+    // Load stages
+    const { data: stagesData } = await supabase
+      .from("pipeline_stages")
+      .select("*")
+      .order("display_order");
+
+    if (stagesData) {
+      setStages(stagesData);
+    }
+
     // Load stats
     const { data: casesData } = await supabase
       .from("analyses")
-      .select("status, priority");
+      .select("status, priority, stage_id");
 
-    if (casesData) {
+    if (casesData && stagesData) {
+      const stageStats: Record<string, number> = {};
+      stagesData.forEach(stage => {
+        stageStats[stage.id] = casesData.filter(c => c.stage_id === stage.id).length;
+      });
+
       setStats({
         totalCases: casesData.length,
-        pendingCases: casesData.filter(c => c.status === "pending").length,
-        completedCases: casesData.filter(c => c.status === "completed").length,
+        processingCases: casesData.filter(c => c.status === "pending" || c.status === "failed").length,
+        stageStats,
         highPriorityCases: casesData.filter(c => c.priority === "high").length,
       });
     }
 
-    // Load recent cases
+    // Load recent cases with stage info
     const { data: recentCasesData } = await supabase
       .from("analyses")
-      .select("id, client_name, file_name, status, priority, created_at")
+      .select(`
+        id, 
+        client_name, 
+        file_name, 
+        status, 
+        priority, 
+        created_at,
+        stage:pipeline_stages(name, color)
+      `)
       .order("created_at", { ascending: false })
       .limit(5);
 
     if (recentCasesData) {
-      setRecentCases(recentCasesData);
+      setRecentCases(recentCasesData.map(c => ({
+        ...c,
+        stage: Array.isArray(c.stage) ? c.stage[0] : c.stage
+      })));
     }
 
     // Load recent activity
@@ -147,13 +178,20 @@ export default function Dashboard() {
     return <Badge variant={variants[priority] || "default"}>{priority}</Badge>;
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "outline"> = {
-      pending: "secondary",
-      completed: "default",
-      failed: "outline",
-    };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+  const getStageBadge = (stage: { name: string; color: string } | null) => {
+    if (!stage) return <Badge variant="outline">No Stage</Badge>;
+    return (
+      <Badge 
+        variant="outline" 
+        style={{ 
+          borderColor: stage.color, 
+          color: stage.color,
+          backgroundColor: `${stage.color}20`
+        }}
+      >
+        {stage.name}
+      </Badge>
+    );
   };
 
   if (!user) {
@@ -203,38 +241,45 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pending
+                Processing
               </CardTitle>
               <Clock className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-warning">{stats.pendingCases}</div>
+              <div className="text-2xl font-bold text-warning">{stats.processingCases}</div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Completed
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">{stats.completedCases}</div>
-            </CardContent>
-          </Card>
+          {stages.slice(0, 2).map((stage) => (
+            <Card key={stage.id}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stage.name}
+                </CardTitle>
+                <div 
+                  className="h-4 w-4 rounded-full" 
+                  style={{ backgroundColor: stage.color }}
+                />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stats.stageStats[stage.id] || 0}</div>
+              </CardContent>
+            </Card>
+          ))}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                High Priority
-              </CardTitle>
-              <AlertCircle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats.highPriorityCases}</div>
-            </CardContent>
-          </Card>
+          {stages.length < 2 && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  High Priority
+                </CardTitle>
+                <AlertCircle className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">{stats.highPriorityCases}</div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -294,7 +339,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         {getPriorityBadge(case_.priority)}
-                        {getStatusBadge(case_.status)}
+                        {getStageBadge(case_.stage)}
                       </div>
                     </div>
                   ))

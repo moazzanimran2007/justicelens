@@ -244,8 +244,8 @@ export default function CaseDetails() {
                         <div>
                           <label className="text-sm font-medium">Status</label>
                           <div className="mt-1">
-                            <Badge variant={caseData.status === "completed" ? "default" : "secondary"}>
-                              {caseData.status}
+                            <Badge variant={caseData.status === "pending" || caseData.status === "failed" ? "secondary" : "outline"}>
+                              {caseData.status === "pending" ? "Processing" : caseData.status === "failed" ? "Failed" : "Ready"}
                             </Badge>
                           </div>
                         </div>
