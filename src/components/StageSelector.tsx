@@ -55,13 +55,29 @@ export const StageSelector = ({
     const oldStage = stages[currentStageIndex];
     const newStage = stages[newIndex];
 
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from("analyses")
       .update({ stage_id: newStage.id })
-      .eq("id", caseId);
+      .eq("id", caseId)
+      .select();
 
     if (error) {
-      toast({ title: "Error updating stage", variant: "destructive" });
+      console.error("Stage update error:", error);
+      toast({ 
+        title: "Error updating stage", 
+        description: error.message || "You may not have permission to update this case.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check if update actually happened (RLS might have blocked it)
+    if (!data || data.length === 0) {
+      toast({ 
+        title: "Permission denied", 
+        description: "You don't have permission to change the stage of this case. Only the case creator or assignee can update it.",
+        variant: "destructive" 
+      });
       return;
     }
 
