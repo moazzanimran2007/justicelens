@@ -1,14 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface StageSelectorProps {
   caseId: string;
@@ -50,13 +44,20 @@ export const StageSelector = ({
     }
   };
 
-  const handleStageChange = async (stageId: string) => {
-    const oldStage = stages.find(s => s.id === selectedStage);
-    const newStage = stages.find(s => s.id === stageId);
+  const currentStageIndex = stages.findIndex(s => s.id === selectedStage);
+  const canMovePrevious = currentStageIndex > 0;
+  const canMoveNext = currentStageIndex < stages.length - 1;
+
+  const handleStageChange = async (direction: 'previous' | 'next') => {
+    const newIndex = direction === 'previous' ? currentStageIndex - 1 : currentStageIndex + 1;
+    if (newIndex < 0 || newIndex >= stages.length) return;
+
+    const oldStage = stages[currentStageIndex];
+    const newStage = stages[newIndex];
 
     const { error } = await supabase
       .from("analyses")
-      .update({ stage_id: stageId })
+      .update({ stage_id: newStage.id })
       .eq("id", caseId);
 
     if (error) {
@@ -64,7 +65,7 @@ export const StageSelector = ({
       return;
     }
 
-    setSelectedStage(stageId);
+    setSelectedStage(newStage.id);
     toast({ 
       title: "Stage updated", 
       description: `Moved from ${oldStage?.name} to ${newStage?.name}`
@@ -72,25 +73,37 @@ export const StageSelector = ({
     onUpdate();
   };
 
+  const currentStage = stages[currentStageIndex];
+
   return (
-    <Select value={selectedStage} onValueChange={handleStageChange}>
-      <SelectTrigger className="w-48">
-        <Layers className="w-4 h-4 mr-2" />
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {stages.map((stage) => (
-          <SelectItem key={stage.id} value={stage.id}>
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: stage.color }}
-              />
-              {stage.name}
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleStageChange('previous')}
+        disabled={!canMovePrevious}
+      >
+        <ChevronLeft className="w-4 h-4 mr-1" />
+        Previous Stage
+      </Button>
+      {currentStage && (
+        <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-muted">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: currentStage.color }}
+          />
+          <span className="text-sm font-medium">{currentStage.name}</span>
+        </div>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleStageChange('next')}
+        disabled={!canMoveNext}
+      >
+        Next Stage
+        <ChevronRight className="w-4 h-4 ml-1" />
+      </Button>
+    </div>
   );
 };
