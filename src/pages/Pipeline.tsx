@@ -34,7 +34,6 @@ export default function Pipeline() {
     }
   };
 
-
   const toggleSelectionMode = () => {
     setSelectionMode(!selectionMode);
     setSelectedCases(new Set());
@@ -87,9 +86,9 @@ export default function Pipeline() {
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-4xl">
             <h1 className="text-4xl font-bold text-foreground mb-3 animate-fade-in">
-              Welcome back, {user?.email?.split('@')[0]}
+              Welcome back, {profile?.full_name || user.email.split("@")[0]}!
             </h1>
-            <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: "0.1s" }}>
               Manage your case pipeline and track progress across all stages
             </p>
           </div>
@@ -109,20 +108,15 @@ export default function Pipeline() {
                 <p className="text-sm text-muted-foreground">Drag cases between stages or use controls</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {!selectionMode ? (
                 <>
-                  <Button 
-                    variant="outline" 
-                    size="default" 
-                    onClick={toggleSelectionMode} 
-                    className="gap-2 hover-scale"
-                  >
+                  <Button variant="outline" size="default" onClick={toggleSelectionMode} className="gap-2 hover-scale">
                     <CheckSquare className="w-4 h-4" />
                     Select Cases
                   </Button>
-                  
+
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                     <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                       <SelectTrigger className="w-[180px] border-0 shadow-none focus:ring-0">
@@ -135,7 +129,7 @@ export default function Pipeline() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                     <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
                     <Select value={sortBy} onValueChange={setSortBy}>
@@ -153,7 +147,7 @@ export default function Pipeline() {
               ) : (
                 <div className="flex items-center gap-3 bg-primary/10 px-6 py-3 rounded-lg border border-primary/20 animate-scale-in">
                   <span className="text-sm font-semibold text-foreground">
-                    {selectedCases.size} case{selectedCases.size !== 1 ? 's' : ''} selected
+                    {selectedCases.size} case{selectedCases.size !== 1 ? "s" : ""} selected
                   </span>
                   <Button
                     variant="destructive"
@@ -176,7 +170,7 @@ export default function Pipeline() {
         </div>
 
         {/* Kanban Board Section */}
-        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
           <KanbanBoard
             sortBy={sortBy}
             assigneeFilter={assigneeFilter}
