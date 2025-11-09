@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { CaseCard } from "./CaseCard";
 import { useToast } from "@/hooks/use-toast";
+import { calculateInnocenceScore } from "@/lib/innocence-score";
 
 interface PipelineStage {
   id: string;
@@ -23,9 +24,14 @@ interface Case {
   created_at: string;
   updated_at: string;
   status: string;
+  results?: any;
 }
 
-export const KanbanBoard = () => {
+interface KanbanBoardProps {
+  sortBy?: string;
+}
+
+export const KanbanBoard = ({ sortBy = "created_at" }: KanbanBoardProps) => {
   const navigate = useNavigate();
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
@@ -64,7 +70,36 @@ export const KanbanBoard = () => {
 
 
   const getCasesForStage = (stageId: string) => {
-    return cases.filter((c) => c.stage_id === stageId);
+    const filtered = cases.filter((c) => c.stage_id === stageId);
+    
+    // Sort based on selected criteria
+    if (sortBy === "innocence_score") {
+      return [...filtered].sort((a, b) => {
+        const scoreA = calculateInnocenceScore({
+          innocenceClaims: a.results?.innocenceClaims,
+          biasIndicators: a.results?.biasIndicators,
+          legalMemo: a.results?.legalMemo,
+        });
+        const scoreB = calculateInnocenceScore({
+          innocenceClaims: b.results?.innocenceClaims,
+          biasIndicators: b.results?.biasIndicators,
+          legalMemo: b.results?.legalMemo,
+        });
+        return scoreB - scoreA; // Highest score first
+      });
+    } else if (sortBy === "priority") {
+      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+      return [...filtered].sort((a, b) => {
+        const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4;
+        const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4;
+        return priorityA - priorityB;
+      });
+    } else {
+      // Default: newest first
+      return [...filtered].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    }
   };
 
   return (

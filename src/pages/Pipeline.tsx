@@ -3,12 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { LogOut, Upload, LayoutDashboard, Users } from "lucide-react";
+import { LogOut, Upload, LayoutDashboard, Users, ArrowDownUp } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Pipeline() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<string>("created_at");
 
   useEffect(() => {
     checkAuth();
@@ -66,12 +74,29 @@ export default function Pipeline() {
 
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-2">Case Pipeline</h2>
-          <p className="text-sm text-muted-foreground">
-            View and manage cases across different stages
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Case Pipeline</h2>
+              <p className="text-sm text-muted-foreground">
+                View and manage cases across different stages
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Sort by..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at">Newest First</SelectItem>
+                  <SelectItem value="innocence_score">Innocence Score</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
-        <KanbanBoard />
+        <KanbanBoard sortBy={sortBy} />
       </main>
     </div>
   );
