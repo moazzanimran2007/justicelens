@@ -180,12 +180,12 @@ serve(async (req) => {
       }
     }
 
-    // Advocate Fact Sheet
+    // Advocate Fact Sheet / Legal Memo
     if (modules.includes('summary')) {
-      console.log('Generating advocate fact sheet...');
-      const summaryPrompt = `Generate a concise advocate fact sheet extracting offense context, years served, programming, parole factors, and evidence.`;
+      console.log('Generating comprehensive legal memo...');
+      const memoPrompt = `Extract ALL available information from this parole hearing transcript to create a comprehensive legal memo. Include client information, conviction details, court information, and all available case details. Be thorough and extract every piece of factual information mentioned.`;
 
-      const summaryResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const memoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -194,43 +194,101 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are a legal advocate assistant. You MUST use the provided function to return structured data.' },
-            { role: 'user', content: `${summaryPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
+            { role: 'system', content: 'You are a legal memo expert. Extract ALL factual information from the transcript. You MUST use the provided function to return structured data.' },
+            { role: 'user', content: `${memoPrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
           ],
           tools: [{
             type: "function",
             function: {
-              name: "generate_fact_sheet",
-              description: "Generate advocate fact sheet from transcript",
+              name: "extract_legal_memo",
+              description: "Extract comprehensive legal memo information from parole transcript",
               parameters: {
                 type: "object",
                 properties: {
-                  offenseContext: { type: "string" },
-                  yearsServed: { type: "number" },
-                  programming: { type: "string" },
-                  paroleFactors: { type: "string" },
-                  supportingEvidence: { type: "array", items: { type: "string" } },
-                  concerns: { type: "array", items: { type: "string" } }
+                  // Client Information
+                  client_name: { type: "string", description: "Full name of the incarcerated person" },
+                  cdcr_number: { type: "string", description: "CDCR identification number" },
+                  contact_information: { type: "string", description: "Contact details or location" },
+                  date_of_birth: { type: "string", description: "Date of birth" },
+                  
+                  // Introduction
+                  short_summary: { type: "string", description: "3-4 sentence summary of conviction, defense, and innocence claims" },
+                  evidence_used_to_convict: { type: "array", items: { type: "string" }, description: "List of evidence presented at trial" },
+                  potential_theory_of_case: { type: "string", description: "Potential legal theory (mistaken ID, alibi, etc.)" },
+                  
+                  // Conviction & Sentence
+                  date_of_crime: { type: "string" },
+                  location_of_crime: { type: "string" },
+                  date_of_arrest: { type: "string" },
+                  date_of_conviction: { type: "string" },
+                  convicted_of: { type: "string", description: "Charges convicted of" },
+                  county_of_conviction: { type: "string" },
+                  sentence: { type: "string", description: "Sentence imposed" },
+                  parole_eligibility_date: { type: "string" },
+                  prior_parole_hearing_result: { type: "string" },
+                  client_priors: { type: "string", description: "Prior criminal history" },
+                  
+                  // Court Information
+                  trial_court_case_no: { type: "string" },
+                  trial_court_judge_dept: { type: "string" },
+                  trial_attorney: { type: "string" },
+                  prosecuting_attorney: { type: "string" },
+                  co_defendant: { type: "string" },
+                  co_defendant_attorney: { type: "string" },
+                  appellate_case_no: { type: "string" },
+                  appellate_attorneys: { type: "string" },
+                  
+                  // Post-Conviction Issues
+                  direct_appeal_date: { type: "string" },
+                  direct_appeal_issues: { type: "array", items: { type: "string" } },
+                  petition_for_review_date: { type: "string" },
+                  petition_for_review_issues: { type: "array", items: { type: "string" } },
+                  habeas_petition_date: { type: "string" },
+                  habeas_petition_issues: { type: "array", items: { type: "string" } },
+                  
+                  // Case Presentations
+                  prosecution_presented: { type: "string", description: "What prosecution presented if mentioned" },
+                  defense_presented: { type: "string", description: "What defense presented if mentioned" },
+                  
+                  // Wrongful Conviction Issues
+                  wrongful_conviction_issues: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "List any present: Eyewitness ID, Confessions, Bite marks, Hair analysis, DNA, Gang evidence, etc."
+                  }
                 },
-                required: ["offenseContext", "yearsServed", "programming", "paroleFactors", "supportingEvidence", "concerns"]
+                required: ["client_name", "short_summary"]
               }
             }
           }],
-          tool_choice: { type: "function", function: { name: "generate_fact_sheet" } }
+          tool_choice: { type: "function", function: { name: "extract_legal_memo" } }
         }),
       });
 
-      if (!summaryResponse.ok) {
-        throw new Error(`AI request failed: ${summaryResponse.status}`);
+      if (!memoResponse.ok) {
+        throw new Error(`AI request failed: ${memoResponse.status}`);
       }
 
-      const summaryData = await summaryResponse.json();
-      const toolCall = summaryData.choices[0].message.tool_calls?.[0];
+      const memoData = await memoResponse.json();
+      const toolCall = memoData.choices[0].message.tool_calls?.[0];
       
       if (toolCall?.function?.arguments) {
-        results.summary = JSON.parse(toolCall.function.arguments);
+        const legalMemo = JSON.parse(toolCall.function.arguments);
+        results.legalMemo = legalMemo;
+        
+        // Store in legal_memos table
+        const { error: memoInsertError } = await supabase
+          .from('legal_memos')
+          .insert({
+            analysis_id: analysisId,
+            ...legalMemo
+          });
+        
+        if (memoInsertError) {
+          console.error('Error inserting legal memo:', memoInsertError);
+        }
       } else {
-        throw new Error("AI did not return structured summary");
+        throw new Error("AI did not return structured legal memo");
       }
     }
 

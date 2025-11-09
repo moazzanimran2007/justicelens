@@ -5,11 +5,14 @@ import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft, BookOpen,
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import LegalMemoDisplay from "./LegalMemoDisplay";
 
 interface AnalysisResultsProps {
   analysis: any;
   onNewAnalysis: () => void;
+  analysisId?: string;
 }
 
 const BiasCategory = ({ category, getSeverityColor }: { category: any; getSeverityColor: (s: string) => "default" | "destructive" | "outline" | "secondary" | "success" | "warning" }) => {
@@ -65,8 +68,34 @@ const BiasCategory = ({ category, getSeverityColor }: { category: any; getSeveri
   );
 };
 
-const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
+const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResultsProps) => {
   const navigate = useNavigate();
+  const [legalMemo, setLegalMemo] = useState<any>(null);
+  const [loadingMemo, setLoadingMemo] = useState(false);
+
+  useEffect(() => {
+    const fetchLegalMemo = async () => {
+      if (!analysisId) return;
+      
+      setLoadingMemo(true);
+      try {
+        const { data, error } = await supabase
+          .from('legal_memos' as any)
+          .select('*')
+          .eq('analysis_id', analysisId)
+          .maybeSingle();
+        
+        if (error) throw error;
+        setLegalMemo(data);
+      } catch (error) {
+        console.error('Error fetching legal memo:', error);
+      } finally {
+        setLoadingMemo(false);
+      }
+    };
+
+    fetchLegalMemo();
+  }, [analysisId]);
   
   const getSeverityColor = (severity: string): "default" | "destructive" | "outline" | "secondary" | "success" | "warning" => {
     switch (severity) {
@@ -153,8 +182,11 @@ const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
         </Card>
       )}
 
-      {/* Summary & Key Facts */}
-      {analysis.summary && (
+      {/* Legal Memo / Fact Sheet */}
+      {legalMemo && <LegalMemoDisplay memo={legalMemo} />}
+      
+      {/* Legacy Summary Display (if no legal memo available) */}
+      {!legalMemo && analysis.summary && (
         <Card className="p-6 border-border shadow-md">
           <div className="flex items-start gap-4 mb-4">
             <div className="p-2 rounded-lg bg-success/10">

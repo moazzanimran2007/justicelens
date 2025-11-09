@@ -18,6 +18,7 @@ const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [selectedModules, setSelectedModules] = useState<string[]>(["innocence", "bias", "summary", "language"]);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
@@ -200,7 +201,7 @@ const Index = () => {
 
               if (updatedAnalysis.status === 'completed') {
                 clearInterval(pollInterval);
-                resolve(updatedAnalysis.results);
+                resolve({ results: updatedAnalysis.results, analysisId: analysisData.id });
               } else if (updatedAnalysis.status === 'failed') {
                 clearInterval(pollInterval);
                 reject(new Error(updatedAnalysis.error_message || "Analysis failed"));
@@ -214,7 +215,7 @@ const Index = () => {
             }, 120000);
           });
 
-          allResults.push({ fileName: file.name, results: result });
+          allResults.push({ fileName: file.name, results: result.results, analysisId: result.analysisId });
         } catch (fileError) {
           console.error(`Error processing ${file.name}:`, fileError);
           failedFiles.push(file.name);
@@ -233,9 +234,11 @@ const Index = () => {
         // For single file, show direct results
         if (allResults.length === 1) {
           setAnalysis(allResults[0].results);
+          setAnalysisId(allResults[0].analysisId);
         } else {
           // For multiple files, combine results
           setAnalysis({ files: allResults });
+          setAnalysisId(null); // Multiple files don't have a single ID
         }
 
         toast({
@@ -402,8 +405,10 @@ const Index = () => {
           {analysis && (
             <AnalysisResults 
               analysis={analysis} 
+              analysisId={analysisId || undefined}
               onNewAnalysis={() => {
                 setAnalysis(null);
+                setAnalysisId(null);
                 setFiles([]);
               }}
             />
