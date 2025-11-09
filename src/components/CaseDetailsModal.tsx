@@ -6,6 +6,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +25,8 @@ import { AssignmentSelector } from "./AssignmentSelector";
 import { PrioritySelector } from "./PrioritySelector";
 import { StageSelector } from "./StageSelector";
 import AnalysisResults from "./AnalysisResults";
-import { X, FileText } from "lucide-react";
+import { X, FileText, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface CaseDetailsModalProps {
   caseId: string;
@@ -30,8 +41,10 @@ export const CaseDetailsModal = ({
   onClose,
   onUpdate,
 }: CaseDetailsModalProps) => {
+  const { toast } = useToast();
   const [caseData, setCaseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (isOpen && caseId) {
@@ -58,30 +71,67 @@ export const CaseDetailsModal = ({
     onUpdate();
   };
 
+  const handleDelete = async () => {
+    try {
+      const { error } = await supabase
+        .from("analyses")
+        .delete()
+        .eq("id", caseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Case deleted",
+        description: "The case has been successfully deleted.",
+      });
+
+      setShowDeleteDialog(false);
+      onClose();
+      onUpdate();
+    } catch (error) {
+      console.error("Error deleting case:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete case. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading || !caseData) {
     return null;
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <DialogTitle className="text-xl mb-2">
-                {caseData.client_name || caseData.file_name}
-              </DialogTitle>
-              {caseData.case_number && (
-                <p className="text-sm text-muted-foreground">{caseData.case_number}</p>
-              )}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <DialogTitle className="text-xl mb-2">
+                  {caseData.client_name || caseData.file_name}
+                </DialogTitle>
+                {caseData.case_number && (
+                  <p className="text-sm text-muted-foreground">{caseData.case_number}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <StageSelector caseId={caseId} currentStageId={caseData.stage_id} onUpdate={handleUpdate} />
+                <AssignmentSelector caseId={caseId} currentAssignee={caseData.assigned_to} onUpdate={handleUpdate} />
+                <PrioritySelector caseId={caseId} currentPriority={caseData.priority} onUpdate={handleUpdate} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <StageSelector caseId={caseId} currentStageId={caseData.stage_id} onUpdate={handleUpdate} />
-              <AssignmentSelector caseId={caseId} currentAssignee={caseData.assigned_to} onUpdate={handleUpdate} />
-              <PrioritySelector caseId={caseId} currentPriority={caseData.priority} onUpdate={handleUpdate} />
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
         <Tabs defaultValue="details" className="flex-1 overflow-hidden flex flex-col">
           <TabsList className="grid w-full grid-cols-4">
@@ -147,5 +197,27 @@ export const CaseDetailsModal = ({
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Case</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{caseData.client_name || caseData.file_name}"? 
+            This action cannot be undone and will permanently remove the case and all associated data.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 };
