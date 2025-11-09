@@ -1,8 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft } from "lucide-react";
+import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft, BookOpen } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -10,6 +11,8 @@ interface AnalysisResultsProps {
 }
 
 const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
+  const navigate = useNavigate();
+  
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "high":
@@ -33,10 +36,16 @@ const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
           <ArrowLeft className="w-4 h-4" />
           New Analysis
         </Button>
-        <Button variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export Report
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/guide")} className="gap-2">
+            <BookOpen className="w-4 h-4" />
+            Interpretation Guide
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Innocence Claims */}
@@ -137,44 +146,85 @@ const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
       </Card>
 
       {/* Language Analysis */}
-      <Card className="p-6 border-border shadow-md">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="p-2 rounded-lg bg-warning/10">
-            <Brain className="w-6 h-6 text-warning" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              Language Pattern Analysis
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Frequency and context of key terms used by the board
-            </p>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold text-primary mb-1">
-                  {analysis.languageAnalysis.insight.frequency}
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">"Insight" mentions</p>
-                <Badge variant="secondary">{analysis.languageAnalysis.insight.context} usage</Badge>
-              </div>
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold text-accent mb-1">
-                  {analysis.languageAnalysis.remorse.frequency}
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">"Remorse" mentions</p>
-                <Badge variant="secondary">{analysis.languageAnalysis.remorse.context} usage</Badge>
-              </div>
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-2xl font-bold text-success mb-1">
-                  {analysis.languageAnalysis.accountability.frequency}
-                </p>
-                <p className="text-sm text-muted-foreground mb-2">"Accountability" mentions</p>
-                <Badge variant="secondary">{analysis.languageAnalysis.accountability.context} usage</Badge>
+      {analysis.languageAnalysis && (
+        <Card className="p-6 border-border shadow-md">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="p-2 rounded-lg bg-warning/10">
+              <Brain className="w-6 h-6 text-warning" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-foreground mb-2">
+                Language Pattern Analysis
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Frequency and context of key terms used by the board
+              </p>
+              <div className="grid md:grid-cols-3 gap-4">
+                {analysis.languageAnalysis.insight && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-center mb-3">
+                      <p className="text-2xl font-bold text-primary mb-1">
+                        {analysis.languageAnalysis.insight.frequency}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">"Insight" mentions</p>
+                      <Badge variant="secondary">{analysis.languageAnalysis.insight.context} usage</Badge>
+                    </div>
+                    {analysis.languageAnalysis.insight.examples && analysis.languageAnalysis.insight.examples.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {analysis.languageAnalysis.insight.examples.slice(0, 2).map((example: string, idx: number) => (
+                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-primary pl-2">
+                            "{example}"
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {analysis.languageAnalysis.remorse && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-center mb-3">
+                      <p className="text-2xl font-bold text-accent mb-1">
+                        {analysis.languageAnalysis.remorse.frequency}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">"Remorse" mentions</p>
+                      <Badge variant="secondary">{analysis.languageAnalysis.remorse.context} usage</Badge>
+                    </div>
+                    {analysis.languageAnalysis.remorse.examples && analysis.languageAnalysis.remorse.examples.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {analysis.languageAnalysis.remorse.examples.slice(0, 2).map((example: string, idx: number) => (
+                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-accent pl-2">
+                            "{example}"
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {analysis.languageAnalysis.accountability && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-center mb-3">
+                      <p className="text-2xl font-bold text-success mb-1">
+                        {analysis.languageAnalysis.accountability.frequency}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">"Accountability" mentions</p>
+                      <Badge variant="secondary">{analysis.languageAnalysis.accountability.context} usage</Badge>
+                    </div>
+                    {analysis.languageAnalysis.accountability.examples && analysis.languageAnalysis.accountability.examples.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {analysis.languageAnalysis.accountability.examples.slice(0, 2).map((example: string, idx: number) => (
+                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-success pl-2">
+                            "{example}"
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };
