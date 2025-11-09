@@ -41,6 +41,12 @@ export default function Team() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
+  const [teamStats, setTeamStats] = useState({
+    totalCases: 0,
+    totalUrgent: 0,
+    totalHigh: 0,
+    avgCasesPerMember: 0,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -115,6 +121,18 @@ export default function Team() {
     );
 
     setTeamMembers(membersWithCounts);
+    
+    // Calculate team-wide statistics
+    const totalCases = membersWithCounts.reduce((sum, m) => sum + m.case_count, 0);
+    const totalUrgent = membersWithCounts.reduce((sum, m) => sum + m.urgent_count, 0);
+    const totalHigh = membersWithCounts.reduce((sum, m) => sum + m.high_priority_count, 0);
+    
+    setTeamStats({
+      totalCases,
+      totalUrgent,
+      totalHigh,
+      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round(totalCases / membersWithCounts.length) : 0,
+    });
   };
 
   const fetchMemberCases = async (memberId: string) => {
@@ -199,6 +217,65 @@ export default function Team() {
           <p className="text-sm text-muted-foreground">
             View team members and their workload distribution
           </p>
+        </div>
+
+        {/* Team Statistics Overview */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Team Size</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{teamMembers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Active members</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{teamStats.totalCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                ~{teamStats.avgCasesPerMember} per member
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">High Priority</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{teamStats.totalHigh}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {teamStats.totalCases > 0 
+                  ? Math.round((teamStats.totalHigh / teamStats.totalCases) * 100) 
+                  : 0}% of total
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Urgent</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">{teamStats.totalUrgent}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {teamStats.totalCases > 0 
+                  ? Math.round((teamStats.totalUrgent / teamStats.totalCases) * 100) 
+                  : 0}% of total
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Team Members Section */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Team Members</h3>
+          <p className="text-sm text-muted-foreground">Click on a member to view their cases</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
