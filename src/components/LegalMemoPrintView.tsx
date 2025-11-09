@@ -155,8 +155,27 @@ export const LegalMemoPrintView = ({ memoData, disabled }: LegalMemoPrintViewPro
       toast.success("Print dialog opened - Ready to save as PDF");
     } catch (error) {
       console.error('Error printing:', error);
+      // Try to extract a meaningful error from the edge function (may be nested JSON strings)
+      const getFriendlyMessage = (e: any) => {
+        const raw = e?.message ?? e?.error ?? e;
+        const tryParse = (s: any) => {
+          try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return s; }
+        };
+        const parsed1 = tryParse(raw);
+        const nested = parsed1?.error ? tryParse(parsed1.error) : undefined;
+        const text = [nested?.message, parsed1?.message, typeof raw === 'string' ? raw : ''].filter(Boolean).join(' ');
+        const lower = String(text).toLowerCase();
+        if (lower.includes('payment_required') || lower.includes('not enough credits') || lower.includes('402')) {
+          return 'AI credits exhausted. Please add credits in Settings → Workspace → Usage, then try again.';
+        }
+        if (lower.includes('too many requests') || lower.includes('rate limit') || lower.includes('429')) {
+          return 'Rate limit reached. Please wait a minute and try again.';
+        }
+        return typeof raw === 'string' && raw ? raw : 'Failed to generate PDF';
+      };
+
       toast.dismiss();
-      toast.error(error instanceof Error ? error.message : "Failed to generate PDF");
+      toast.error(getFriendlyMessage(error));
     } finally {
       setIsGenerating(false);
     }
