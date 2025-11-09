@@ -26,15 +26,6 @@ serve(async (req) => {
     console.log('Starting analysis for ID:', analysisId);
     console.log('Selected modules:', modules);
 
-    // Authorization check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -44,21 +35,37 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Create client with user's auth to verify access
+    // Authorization check - get JWT from header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Create a Supabase client with the user's JWT token for RLS
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
     
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Verify the JWT token by getting the user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+    
     if (userError || !user) {
+      console.error('Auth verification failed:', userError);
       return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Verify user has access to this analysis
+    console.log('Authenticated user:', user.id);
+
+    // Verify user has access to this analysis using RLS-enabled query
     const { data: analysis, error: authError } = await supabaseClient
       .from('analyses')
       .select('user_id, assigned_to')
@@ -66,31 +73,16 @@ serve(async (req) => {
       .single();
 
     if (authError || !analysis) {
+      console.error('Analysis access check failed:', authError);
       return new Response(JSON.stringify({ error: 'Analysis not found or access denied' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    // Check if user owns the analysis or is assigned to it
-    if (analysis.user_id !== user.id && analysis.assigned_to !== user.id) {
-      // Check if user is admin
-      const { data: roles } = await supabaseClient
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+    console.log('User has access to analysis:', analysisId);
 
-      if (!roles) {
-        return new Response(JSON.stringify({ error: 'Unauthorized access to this analysis' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-    }
-
-    // Create service role client for database operations
+    // Create service role client for database operations (bypasses RLS)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Update status to processing
