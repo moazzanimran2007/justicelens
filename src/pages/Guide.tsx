@@ -36,7 +36,7 @@ const Guide = () => {
           <Card className="p-8 border-border shadow-lg">
             <h2 className="text-3xl font-bold text-foreground mb-4">How to Interpret Your Results</h2>
             <p className="text-muted-foreground text-lg">
-              JusticeLens uses advanced AI to analyze parole hearing transcripts across four key dimensions. 
+              #JusticeLens uses advanced AI to analyze parole hearing transcripts across four key dimensions.
               This guide will help you understand what each analysis module reveals and how to use the insights 
               to advocate more effectively for justice reform.
             </p>
@@ -291,7 +291,7 @@ const Guide = () => {
       <footer className="border-t border-border mt-16">
         <div className="container mx-auto px-6 py-8">
           <p className="text-center text-sm text-muted-foreground">
-            JusticeLens • Advancing fairness through data-driven analysis
+            #JusticeLens • Advancing fairness through data-driven analysis
           </p>
         </div>
       </footer>

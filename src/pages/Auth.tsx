@@ -121,7 +121,7 @@ const Auth = () => {
             <Brain className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">JusticeLens</h1>
+            <h1 className="text-2xl font-bold text-foreground">#JusticeLens</h1>
             <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
           </div>
         </div>

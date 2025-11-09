@@ -23,7 +23,7 @@ export const Header = ({
           <div className="flex items-center gap-3">
             
             <div>
-              <h1 className="text-2xl font-bold text-foreground">JusticeLens</h1>
+              <h1 className="text-2xl font-bold text-foreground">#JusticeLens</h1>
               <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
             </div>
           </div>

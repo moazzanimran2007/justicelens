@@ -454,7 +454,7 @@ const Index = () => {
       <footer className="border-t border-border mt-16">
         <div className="container mx-auto px-6 py-8">
           <p className="text-center text-sm text-muted-foreground">
-            JusticeLens • Advancing fairness through data-driven analysis
+            #JusticeLens • Advancing fairness through data-driven analysis
           </p>
         </div>
       </footer>
