@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Pipeline from "./pages/Pipeline";
 import Team from "./pages/Team";
 import CaseDetails from "./pages/CaseDetails";
+import Dashboard from "./pages/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +21,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Pipeline />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/case/:id" element={<CaseDetails />} />
           <Route path="/new-case" element={<Index />} />
           <Route path="/team" element={<Team />} />
