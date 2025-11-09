@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Check, X, Shield, Upload } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
@@ -36,9 +43,7 @@ interface CaseInfo {
 }
 export default function Team() {
   const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -48,13 +53,13 @@ export default function Team() {
     totalCases: 0,
     totalUrgent: 0,
     totalHigh: 0,
-    avgCasesPerMember: 0
+    avgCasesPerMember: 0,
   });
   const [teamSettings, setTeamSettings] = useState({
     id: "",
     team_name: "Justice Team",
     team_icon: "⚖️",
-    logo_url: null as string | null
+    logo_url: null as string | null,
   });
   const [editingTeamSettings, setEditingTeamSettings] = useState(false);
   const [editingTeamSettingsName, setEditingTeamSettingsName] = useState("");
@@ -72,9 +77,7 @@ export default function Team() {
   }, [selectedMember]);
   const checkAuth = async () => {
     const {
-      data: {
-        user
-      }
+      data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
@@ -82,111 +85,112 @@ export default function Team() {
       setUser(user);
 
       // Check if user is admin
-      const {
-        data: rolesData
-      } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-      setIsAdmin(rolesData?.some(r => r.role === "admin") || false);
+      const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      setIsAdmin(rolesData?.some((r) => r.role === "admin") || false);
     }
   };
   const fetchTeamData = async () => {
     // Get all profiles
-    const {
-      data: profiles,
-      error: profilesError
-    } = await supabase.from("profiles").select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url").order("full_name");
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url")
+      .order("full_name");
     if (profilesError || !profiles) return;
 
     // Get roles for all users
-    const {
-      data: rolesData
-    } = await supabase.from("user_roles").select("user_id, role");
-    const rolesByUser = (rolesData || []).reduce((acc, {
-      user_id,
-      role
-    }) => {
-      if (!acc[user_id]) acc[user_id] = [];
-      acc[user_id].push(role);
-      return acc;
-    }, {} as Record<string, string[]>);
+    const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
+    const rolesByUser = (rolesData || []).reduce(
+      (acc, { user_id, role }) => {
+        if (!acc[user_id]) acc[user_id] = [];
+        acc[user_id].push(role);
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
 
     // Get case counts for each member
-    const membersWithCounts = await Promise.all(profiles.map(async profile => {
-      const {
-        count: totalCount
-      } = await supabase.from("analyses").select("*", {
-        count: "exact",
-        head: true
-      }).eq("assigned_to", profile.id);
-      const {
-        count: highPriorityCount
-      } = await supabase.from("analyses").select("*", {
-        count: "exact",
-        head: true
-      }).eq("assigned_to", profile.id).eq("priority", "high");
-      const {
-        count: urgentCount
-      } = await supabase.from("analyses").select("*", {
-        count: "exact",
-        head: true
-      }).eq("assigned_to", profile.id).eq("priority", "urgent");
-      return {
-        ...profile,
-        case_count: totalCount || 0,
-        high_priority_count: highPriorityCount || 0,
-        urgent_count: urgentCount || 0,
-        roles: rolesByUser[profile.id] || []
-      };
-    }));
+    const membersWithCounts = await Promise.all(
+      profiles.map(async (profile) => {
+        const { count: totalCount } = await supabase
+          .from("analyses")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("assigned_to", profile.id);
+        const { count: highPriorityCount } = await supabase
+          .from("analyses")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("assigned_to", profile.id)
+          .eq("priority", "high");
+        const { count: urgentCount } = await supabase
+          .from("analyses")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("assigned_to", profile.id)
+          .eq("priority", "urgent");
+        return {
+          ...profile,
+          case_count: totalCount || 0,
+          high_priority_count: highPriorityCount || 0,
+          urgent_count: urgentCount || 0,
+          roles: rolesByUser[profile.id] || [],
+        };
+      }),
+    );
     setTeamMembers(membersWithCounts);
 
     // Get ALL cases in the system (not just assigned ones)
-    const {
-      count: allCasesCount
-    } = await supabase.from("analyses").select("*", {
+    const { count: allCasesCount } = await supabase.from("analyses").select("*", {
       count: "exact",
-      head: true
+      head: true,
     });
-    const {
-      count: allHighCount
-    } = await supabase.from("analyses").select("*", {
-      count: "exact",
-      head: true
-    }).eq("priority", "high");
-    const {
-      count: allUrgentCount
-    } = await supabase.from("analyses").select("*", {
-      count: "exact",
-      head: true
-    }).eq("priority", "urgent");
+    const { count: allHighCount } = await supabase
+      .from("analyses")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("priority", "high");
+    const { count: allUrgentCount } = await supabase
+      .from("analyses")
+      .select("*", {
+        count: "exact",
+        head: true,
+      })
+      .eq("priority", "urgent");
     setTeamStats({
       totalCases: allCasesCount || 0,
       totalUrgent: allUrgentCount || 0,
       totalHigh: allHighCount || 0,
-      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0
+      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0,
     });
   };
   const fetchMemberCases = async (memberId: string) => {
-    const {
-      data,
-      error
-    } = await supabase.from("analyses").select("id, client_name, file_name, priority, status, created_at").eq("assigned_to", memberId).order("created_at", {
-      ascending: false
-    });
+    const { data, error } = await supabase
+      .from("analyses")
+      .select("id, client_name, file_name, priority, status, created_at")
+      .eq("assigned_to", memberId)
+      .order("created_at", {
+        ascending: false,
+      });
     if (!error && data) {
       setMemberCases(data);
     }
   };
   const fetchTeamSettings = async () => {
-    const {
-      data,
-      error
-    } = await supabase.from("team_settings").select("*").maybeSingle();
+    const { data, error } = await supabase.from("team_settings").select("*").maybeSingle();
     if (!error && data) {
       setTeamSettings({
         id: data.id,
         team_name: data.team_name,
         team_icon: data.team_icon,
-        logo_url: data.logo_url
+        logo_url: data.logo_url,
       });
     }
   };
@@ -195,11 +199,11 @@ export default function Team() {
     if (!file || !user) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
         title: "Error",
         description: "Please upload an image file",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -209,7 +213,7 @@ export default function Team() {
       toast({
         title: "Error",
         description: "File size must be less than 5MB",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -217,48 +221,45 @@ export default function Team() {
     try {
       // Delete old logo if exists
       if (teamSettings.logo_url) {
-        const oldPath = teamSettings.logo_url.split('/').pop();
+        const oldPath = teamSettings.logo_url.split("/").pop();
         if (oldPath) {
-          await supabase.storage.from('team-logos').remove([oldPath]);
+          await supabase.storage.from("team-logos").remove([oldPath]);
         }
       }
 
       // Upload new logo
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `team-logo-${Date.now()}.${fileExt}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from('team-logos').upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: false
+      const { error: uploadError } = await supabase.storage.from("team-logos").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false,
       });
       if (uploadError) throw uploadError;
 
       // Get public URL
       const {
-        data: {
-          publicUrl
-        }
-      } = supabase.storage.from('team-logos').getPublicUrl(fileName);
+        data: { publicUrl },
+      } = supabase.storage.from("team-logos").getPublicUrl(fileName);
 
       // Update team settings
-      const {
-        error: updateError
-      } = await supabase.from('team_settings').update({
-        logo_url: publicUrl
-      }).eq('id', teamSettings.id);
+      const { error: updateError } = await supabase
+        .from("team_settings")
+        .update({
+          logo_url: publicUrl,
+        })
+        .eq("id", teamSettings.id);
       if (updateError) throw updateError;
       toast({
         title: "Success",
-        description: "Team logo updated successfully"
+        description: "Team logo updated successfully",
       });
       fetchTeamSettings();
     } catch (error: any) {
-      console.error('Error uploading logo:', error);
+      console.error("Error uploading logo:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to upload logo",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setUploadingLogo(false);
@@ -268,28 +269,29 @@ export default function Team() {
     if (!teamSettings.logo_url) return;
     try {
       // Delete from storage
-      const path = teamSettings.logo_url.split('/').pop();
+      const path = teamSettings.logo_url.split("/").pop();
       if (path) {
-        await supabase.storage.from('team-logos').remove([path]);
+        await supabase.storage.from("team-logos").remove([path]);
       }
 
       // Update team settings
-      const {
-        error
-      } = await supabase.from('team_settings').update({
-        logo_url: null
-      }).eq('id', teamSettings.id);
+      const { error } = await supabase
+        .from("team_settings")
+        .update({
+          logo_url: null,
+        })
+        .eq("id", teamSettings.id);
       if (error) throw error;
       toast({
         title: "Success",
-        description: "Team logo removed"
+        description: "Team logo removed",
       });
       fetchTeamSettings();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -305,16 +307,17 @@ export default function Team() {
   };
   const handleSaveTeamSettings = async () => {
     try {
-      const {
-        error
-      } = await supabase.from("team_settings").update({
-        team_name: editingTeamSettingsName,
-        team_icon: editingTeamSettingsIcon
-      }).eq("id", teamSettings.id);
+      const { error } = await supabase
+        .from("team_settings")
+        .update({
+          team_name: editingTeamSettingsName,
+          team_icon: editingTeamSettingsIcon,
+        })
+        .eq("id", teamSettings.id);
       if (error) throw error;
       toast({
         title: "Success",
-        description: "Team settings updated"
+        description: "Team settings updated",
       });
       handleCancelEditTeamSettings();
       fetchTeamSettings();
@@ -322,13 +325,18 @@ export default function Team() {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
   const getInitials = (name: string | null, email: string) => {
     if (name) {
-      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+      return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
     }
     return email.slice(0, 2).toUpperCase();
   };
@@ -346,46 +354,43 @@ export default function Team() {
   };
   const handleAddRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
     try {
-      const {
-        error
-      } = await supabase.from("user_roles").insert({
+      const { error } = await supabase.from("user_roles").insert({
         user_id: memberId,
-        role: role as any
+        role: role as any,
       });
       if (error) throw error;
       toast({
         title: "Success",
-        description: `Role '${role}' added`
+        description: `Role '${role}' added`,
       });
       fetchTeamData();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
   const handleRemoveRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
     try {
-      const {
-        error
-      } = await supabase.from("user_roles").delete().eq("user_id", memberId).eq("role", role);
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", memberId).eq("role", role);
       if (error) throw error;
       toast({
         title: "Success",
-        description: `Role '${role}' removed`
+        description: `Role '${role}' removed`,
       });
       fetchTeamData();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
-  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
@@ -394,47 +399,101 @@ export default function Team() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {editingTeamSettings ? <div className="flex items-center gap-3">
-                    <Input value={editingTeamSettingsIcon} onChange={e => setEditingTeamSettingsIcon(e.target.value)} placeholder="Icon" className="w-20 text-2xl text-center" maxLength={2} />
-                    <Input value={editingTeamSettingsName} onChange={e => setEditingTeamSettingsName(e.target.value)} placeholder="Team Name" className="text-2xl font-bold" />
+                {editingTeamSettings ? (
+                  <div className="flex items-center gap-3">
+                    <Input
+                      value={editingTeamSettingsIcon}
+                      onChange={(e) => setEditingTeamSettingsIcon(e.target.value)}
+                      placeholder="Icon"
+                      className="w-20 text-2xl text-center"
+                      maxLength={2}
+                    />
+                    <Input
+                      value={editingTeamSettingsName}
+                      onChange={(e) => setEditingTeamSettingsName(e.target.value)}
+                      placeholder="Team Name"
+                      className="text-2xl font-bold"
+                    />
                     <Button size="sm" onClick={handleSaveTeamSettings}>
                       <Check className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={handleCancelEditTeamSettings}>
                       <X className="h-4 w-4" />
                     </Button>
-                  </div> : <>
-                    {teamSettings.logo_url ? <div className="relative group">
-                        <img src={teamSettings.logo_url} alt="Team Logo" className="w-16 h-16 object-contain rounded-lg border border-border" />
-                        {isAdmin && <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                  </div>
+                ) : (
+                  <>
+                    {teamSettings.logo_url ? (
+                      <div className="relative group">
+                        <img
+                          src={teamSettings.logo_url}
+                          alt="Team Logo"
+                          className="w-16 h-16 object-contain rounded-lg border border-border"
+                        />
+                        {isAdmin && (
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                             <label htmlFor="logo-upload" className="cursor-pointer">
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-white hover:text-white"
+                                asChild
+                              >
                                 <span>
                                   <Upload className="h-3 w-3" />
                                 </span>
                               </Button>
                             </label>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" onClick={handleRemoveLogo}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-white hover:text-white"
+                              onClick={handleRemoveLogo}
+                            >
                               <X className="h-3 w-3" />
                             </Button>
-                          </div>}
-                      </div> : <div className="relative group">
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative group">
                         <div className="text-4xl">{teamSettings.team_icon}</div>
-                        {isAdmin && <label htmlFor="logo-upload" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
+                        {isAdmin && (
+                          <label
+                            htmlFor="logo-upload"
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer"
+                          >
                             <Upload className="h-5 w-5 text-white" />
-                          </label>}
-                      </div>}
-                    <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={!isAdmin || uploadingLogo} />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                      disabled={!isAdmin || uploadingLogo}
+                    />
                     <div>
                       <h2 className="text-2xl font-bold flex items-center gap-2">
                         {teamSettings.team_name}
-                        {isAdmin && <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleStartEditTeamSettings}>
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={handleStartEditTeamSettings}
+                          >
                             <Pencil className="h-3 w-3" />
-                          </Button>}
+                          </Button>
+                        )}
                       </h2>
                       <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
                     </div>
-                  </>}
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -458,7 +517,7 @@ export default function Team() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{teamStats.totalCases}</div>
-              <p className="text-xs text-muted-foreground mt-1">Cases you have access to{teamStats.avgCasesPerMember} per member</p>
+              <p className="text-xs text-muted-foreground mt-1">Cases you have access to</p>
             </CardContent>
           </Card>
 
@@ -469,7 +528,7 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-orange-600">{teamStats.totalHigh}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 ? Math.round(teamStats.totalHigh / teamStats.totalCases * 100) : 0}% of
+                {teamStats.totalCases > 0 ? Math.round((teamStats.totalHigh / teamStats.totalCases) * 100) : 0}% of
                 total
               </p>
             </CardContent>
@@ -482,7 +541,7 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-red-600">{teamStats.totalUrgent}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 ? Math.round(teamStats.totalUrgent / teamStats.totalCases * 100) : 0}% of
+                {teamStats.totalCases > 0 ? Math.round((teamStats.totalUrgent / teamStats.totalCases) * 100) : 0}% of
                 total
               </p>
             </CardContent>
@@ -501,7 +560,12 @@ export default function Team() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {teamMembers.map(member => <div key={member.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`} onClick={() => setSelectedMember(member.id)}>
+              {teamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`}
+                  onClick={() => setSelectedMember(member.id)}
+                >
                   {/* Avatar */}
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={member.avatar_url || undefined} />
@@ -513,16 +577,20 @@ export default function Team() {
                   {/* Name and Role */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-sm truncate">
-                        {member.full_name || member.email}
-                      </h4>
-                      {isAdmin && <Dialog>
+                      <h4 className="font-semibold text-sm truncate">{member.full_name || member.email}</h4>
+                      {isAdmin && (
+                        <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Shield className="h-3 w-3" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent onClick={e => e.stopPropagation()}>
+                          <DialogContent onClick={(e) => e.stopPropagation()}>
                             <DialogHeader>
                               <DialogTitle>Manage Roles</DialogTitle>
                               <DialogDescription>
@@ -533,15 +601,24 @@ export default function Team() {
                               <div>
                                 <p className="text-sm font-medium mb-2">Current Roles:</p>
                                 <div className="flex flex-wrap gap-2">
-                                  {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                  {member.roles.length === 0 ? (
+                                    <Badge variant="outline">No roles assigned</Badge>
+                                  ) : (
+                                    member.roles.map((role) => (
+                                      <Badge key={role} variant="secondary" className="flex items-center gap-1">
                                         {role}
-                                        <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
-                                      </Badge>)}
+                                        <X
+                                          className="h-3 w-3 cursor-pointer"
+                                          onClick={() => handleRemoveRole(member.id, role as any)}
+                                        />
+                                      </Badge>
+                                    ))
+                                  )}
                                 </div>
                               </div>
                               <div>
                                 <p className="text-sm font-medium mb-2">Add Role:</p>
-                                <Select onValueChange={role => handleAddRole(member.id, role as any)}>
+                                <Select onValueChange={(role) => handleAddRole(member.id, role as any)}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select a role" />
                                   </SelectTrigger>
@@ -555,12 +632,19 @@ export default function Team() {
                               </div>
                             </div>
                           </DialogContent>
-                        </Dialog>}
+                        </Dialog>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {member.roles.length > 0 ? member.roles.map(role => <Badge key={role} variant="outline" className="text-xs">
+                      {member.roles.length > 0 ? (
+                        member.roles.map((role) => (
+                          <Badge key={role} variant="outline" className="text-xs">
                             {role}
-                          </Badge>) : <span className="text-xs text-muted-foreground">No role assigned</span>}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No role assigned</span>
+                      )}
                     </div>
                   </div>
 
@@ -579,20 +663,26 @@ export default function Team() {
                       <p className="text-xs text-muted-foreground">Urgent</p>
                     </div>
                   </div>
-                </div>)}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {selectedMember && <Card className="mt-6">
+        {selectedMember && (
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle>
                 Cases for{" "}
-                {teamMembers.find(m => m.id === selectedMember)?.full_name || teamMembers.find(m => m.id === selectedMember)?.email}
+                {teamMembers.find((m) => m.id === selectedMember)?.full_name ||
+                  teamMembers.find((m) => m.id === selectedMember)?.email}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
+              {memberCases.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Name</TableHead>
@@ -602,7 +692,8 @@ export default function Team() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                    {memberCases.map((case_) => (
+                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
                         <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
@@ -613,11 +704,15 @@ export default function Team() {
                         <TableCell className="text-muted-foreground">
                           {new Date(case_.created_at).toLocaleDateString()}
                         </TableCell>
-                      </TableRow>)}
+                      </TableRow>
+                    ))}
                   </TableBody>
-                </Table>}
+                </Table>
+              )}
             </CardContent>
-          </Card>}
+          </Card>
+        )}
       </main>
-    </div>;
+    </div>
+  );
 }
