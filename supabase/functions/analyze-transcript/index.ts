@@ -337,6 +337,15 @@ serve(async (req) => {
         if (memoInsertError) {
           console.error('Error inserting legal memo:', memoInsertError);
         }
+        
+        // Update analyses table with client name and case number for easy display
+        await supabase
+          .from('analyses')
+          .update({
+            client_name: legalMemo.client_name || null,
+            case_number: legalMemo.cdcr_number || null
+          })
+          .eq('id', analysisId);
       } else {
         throw new Error("AI did not return structured legal memo");
       }
