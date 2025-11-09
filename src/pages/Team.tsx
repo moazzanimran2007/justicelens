@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
-
 interface TeamMember {
   id: string;
   email: string;
@@ -28,7 +27,6 @@ interface TeamMember {
   urgent_count: number;
   roles: string[];
 }
-
 interface CaseInfo {
   id: string;
   client_name: string | null;
@@ -37,10 +35,11 @@ interface CaseInfo {
   status: string;
   created_at: string;
 }
-
 export default function Team() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -57,140 +56,129 @@ export default function Team() {
     totalCases: 0,
     totalUrgent: 0,
     totalHigh: 0,
-    avgCasesPerMember: 0,
+    avgCasesPerMember: 0
   });
-
   useEffect(() => {
     checkAuth();
     fetchTeamData();
   }, []);
-
   useEffect(() => {
     if (selectedMember) {
       fetchMemberCases(selectedMember);
     }
   }, [selectedMember]);
-
   const checkAuth = async () => {
     const {
-      data: { user },
+      data: {
+        user
+      }
     } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
     } else {
       setUser(user);
-      
+
       // Check if user is admin
-      const { data: rolesData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      
+      const {
+        data: rolesData
+      } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       setIsAdmin(rolesData?.some(r => r.role === "admin") || false);
     }
   };
-
   const fetchTeamData = async () => {
     // Get all profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url")
-      .order("full_name");
-
+    const {
+      data: profiles,
+      error: profilesError
+    } = await supabase.from("profiles").select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url").order("full_name");
     if (profilesError || !profiles) return;
 
     // Get roles for all users
-    const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
-
-    const rolesByUser = (rolesData || []).reduce(
-      (acc, { user_id, role }) => {
-        if (!acc[user_id]) acc[user_id] = [];
-        acc[user_id].push(role);
-        return acc;
-      },
-      {} as Record<string, string[]>,
-    );
+    const {
+      data: rolesData
+    } = await supabase.from("user_roles").select("user_id, role");
+    const rolesByUser = (rolesData || []).reduce((acc, {
+      user_id,
+      role
+    }) => {
+      if (!acc[user_id]) acc[user_id] = [];
+      acc[user_id].push(role);
+      return acc;
+    }, {} as Record<string, string[]>);
 
     // Get case counts for each member
-    const membersWithCounts = await Promise.all(
-      profiles.map(async (profile) => {
-        const { count: totalCount } = await supabase
-          .from("analyses")
-          .select("*", { count: "exact", head: true })
-          .eq("assigned_to", profile.id);
-
-        const { count: highPriorityCount } = await supabase
-          .from("analyses")
-          .select("*", { count: "exact", head: true })
-          .eq("assigned_to", profile.id)
-          .eq("priority", "high");
-
-        const { count: urgentCount } = await supabase
-          .from("analyses")
-          .select("*", { count: "exact", head: true })
-          .eq("assigned_to", profile.id)
-          .eq("priority", "urgent");
-
-        return {
-          ...profile,
-          case_count: totalCount || 0,
-          high_priority_count: highPriorityCount || 0,
-          urgent_count: urgentCount || 0,
-          roles: rolesByUser[profile.id] || [],
-        };
-      }),
-    );
-
+    const membersWithCounts = await Promise.all(profiles.map(async profile => {
+      const {
+        count: totalCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id);
+      const {
+        count: highPriorityCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id).eq("priority", "high");
+      const {
+        count: urgentCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id).eq("priority", "urgent");
+      return {
+        ...profile,
+        case_count: totalCount || 0,
+        high_priority_count: highPriorityCount || 0,
+        urgent_count: urgentCount || 0,
+        roles: rolesByUser[profile.id] || []
+      };
+    }));
     setTeamMembers(membersWithCounts);
 
     // Get ALL cases in the system (not just assigned ones)
-    const { count: allCasesCount } = await supabase
-      .from("analyses")
-      .select("*", { count: "exact", head: true });
-
-    const { count: allHighCount } = await supabase
-      .from("analyses")
-      .select("*", { count: "exact", head: true })
-      .eq("priority", "high");
-
-    const { count: allUrgentCount } = await supabase
-      .from("analyses")
-      .select("*", { count: "exact", head: true })
-      .eq("priority", "urgent");
-
+    const {
+      count: allCasesCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    });
+    const {
+      count: allHighCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    }).eq("priority", "high");
+    const {
+      count: allUrgentCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    }).eq("priority", "urgent");
     setTeamStats({
       totalCases: allCasesCount || 0,
       totalUrgent: allUrgentCount || 0,
       totalHigh: allHighCount || 0,
-      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0,
+      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0
     });
   };
-
   const fetchMemberCases = async (memberId: string) => {
-    const { data, error } = await supabase
-      .from("analyses")
-      .select("id, client_name, file_name, priority, status, created_at")
-      .eq("assigned_to", memberId)
-      .order("created_at", { ascending: false });
-
+    const {
+      data,
+      error
+    } = await supabase.from("analyses").select("id, client_name, file_name, priority, status, created_at").eq("assigned_to", memberId).order("created_at", {
+      ascending: false
+    });
     if (!error && data) {
       setMemberCases(data);
     }
   };
-
-
   const getInitials = (name: string | null, email: string) => {
     if (name) {
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
     }
     return email.slice(0, 2).toUpperCase();
   };
-
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
@@ -203,7 +191,6 @@ export default function Team() {
         return "outline";
     }
   };
-
   const handleStartEdit = (member: TeamMember) => {
     setEditingMemberId(member.id);
     setEditingName(member.full_name || "");
@@ -212,7 +199,6 @@ export default function Team() {
     setEditingTeamName(member.team_name || "");
     setEditingBio(member.bio || "");
   };
-
   const handleCancelEdit = () => {
     setEditingMemberId(null);
     setEditingName("");
@@ -221,88 +207,74 @@ export default function Team() {
     setEditingTeamName("");
     setEditingBio("");
   };
-
   const handleSaveEdit = async (memberId: string) => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ 
-          full_name: editingName || null,
-          nickname: editingNickname || null,
-          job_title: editingJobTitle || null,
-          team_name: editingTeamName || null,
-          bio: editingBio || null
-        })
-        .eq("id", memberId);
-
+      const {
+        error
+      } = await supabase.from("profiles").update({
+        full_name: editingName || null,
+        nickname: editingNickname || null,
+        job_title: editingJobTitle || null,
+        team_name: editingTeamName || null,
+        bio: editingBio || null
+      }).eq("id", memberId);
       if (error) throw error;
-
       toast({
         title: "Success",
-        description: "Team member information updated",
+        description: "Team member information updated"
       });
-
       handleCancelEdit();
       fetchTeamData();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleAddRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({ user_id: memberId, role: role as any });
-
+      const {
+        error
+      } = await supabase.from("user_roles").insert({
+        user_id: memberId,
+        role: role as any
+      });
       if (error) throw error;
-
       toast({
         title: "Success",
-        description: `Role '${role}' added`,
+        description: `Role '${role}' added`
       });
-
       fetchTeamData();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleRemoveRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", memberId)
-        .eq("role", role);
-
+      const {
+        error
+      } = await supabase.from("user_roles").delete().eq("user_id", memberId).eq("role", role);
       if (error) throw error;
-
       toast({
         title: "Success",
-        description: `Role '${role}' removed`,
+        description: `Role '${role}' removed`
       });
-
       fetchTeamData();
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
@@ -340,7 +312,7 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-orange-600">{teamStats.totalHigh}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 ? Math.round((teamStats.totalHigh / teamStats.totalCases) * 100) : 0}% of
+                {teamStats.totalCases > 0 ? Math.round(teamStats.totalHigh / teamStats.totalCases * 100) : 0}% of
                 total
               </p>
             </CardContent>
@@ -353,7 +325,7 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-red-600">{teamStats.totalUrgent}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 ? Math.round((teamStats.totalUrgent / teamStats.totalCases) * 100) : 0}% of
+                {teamStats.totalCases > 0 ? Math.round(teamStats.totalUrgent / teamStats.totalCases * 100) : 0}% of
                 total
               </p>
             </CardContent>
@@ -367,14 +339,7 @@ export default function Team() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-          {teamMembers.map((member) => (
-            <Card
-              key={member.id}
-              className={`cursor-pointer transition-colors hover:border-primary ${
-                selectedMember === member.id ? "border-primary bg-primary/5" : ""
-              }`}
-              onClick={() => setSelectedMember(member.id)}
-            >
+          {teamMembers.map(member => <Card key={member.id} className={`cursor-pointer transition-colors hover:border-primary ${selectedMember === member.id ? "border-primary bg-primary/5" : ""}`} onClick={() => setSelectedMember(member.id)}>
               <CardHeader className="flex flex-row items-center gap-4 pb-3">
                 <Avatar>
                   <AvatarFallback className="bg-primary/10 text-primary">
@@ -383,105 +348,52 @@ export default function Team() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    {editingMemberId === member.id ? (
-                      <div className="flex flex-col gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                    {editingMemberId === member.id ? <div className="flex flex-col gap-2 flex-1" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-2">
-                          <Input
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            placeholder="Full Name"
-                            className="h-8 text-sm"
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveEdit(member.id);
-                            }}
-                          >
+                          <Input value={editingName} onChange={e => setEditingName(e.target.value)} placeholder="Full Name" className="h-8 text-sm" />
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={e => {
+                      e.stopPropagation();
+                      handleSaveEdit(member.id);
+                    }}>
                             <Check className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCancelEdit();
-                            }}
-                          >
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={e => {
+                      e.stopPropagation();
+                      handleCancelEdit();
+                    }}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        <Input
-                          value={editingNickname}
-                          onChange={(e) => setEditingNickname(e.target.value)}
-                          placeholder="Nickname"
-                          className="h-8 text-sm"
-                        />
-                        <Input
-                          value={editingJobTitle}
-                          onChange={(e) => setEditingJobTitle(e.target.value)}
-                          placeholder="Job Title"
-                          className="h-8 text-sm"
-                        />
-                        <Input
-                          value={editingTeamName}
-                          onChange={(e) => setEditingTeamName(e.target.value)}
-                          placeholder="Team Name"
-                          className="h-8 text-sm"
-                        />
-                        <Textarea
-                          value={editingBio}
-                          onChange={(e) => setEditingBio(e.target.value)}
-                          placeholder="Bio"
-                          className="text-sm min-h-[60px]"
-                        />
-                      </div>
-                    ) : (
-                      <>
+                        <Input value={editingNickname} onChange={e => setEditingNickname(e.target.value)} placeholder="Nickname" className="h-8 text-sm" />
+                        <Input value={editingJobTitle} onChange={e => setEditingJobTitle(e.target.value)} placeholder="Job Title" className="h-8 text-sm" />
+                        
+                        
+                      </div> : <>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <div className="flex-1">
                               <CardTitle className="text-base truncate">
                                 {member.nickname ? `${member.nickname} (${member.full_name || member.email})` : member.full_name || member.email}
                               </CardTitle>
-                              {member.job_title && (
-                                <p className="text-xs text-muted-foreground">{member.job_title}</p>
-                              )}
-                              {member.team_name && (
-                                <Badge variant="outline" className="text-xs mt-1">
+                              {member.job_title && <p className="text-xs text-muted-foreground">{member.job_title}</p>}
+                              {member.team_name && <Badge variant="outline" className="text-xs mt-1">
                                   {member.team_name}
-                                </Badge>
-                              )}
+                                </Badge>}
                             </div>
-                            {isAdmin && (
-                              <div className="flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartEdit(member);
-                                  }}
-                                >
+                            {isAdmin && <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => {
+                          e.stopPropagation();
+                          handleStartEdit(member);
+                        }}>
                                   <Pencil className="h-3 w-3" />
                                 </Button>
                                 <Dialog>
                                   <DialogTrigger asChild>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
                                       <Shield className="h-3 w-3" />
                                     </Button>
                                   </DialogTrigger>
-                                  <DialogContent onClick={(e) => e.stopPropagation()}>
+                                  <DialogContent onClick={e => e.stopPropagation()}>
                                     <DialogHeader>
                                       <DialogTitle>Manage Roles</DialogTitle>
                                       <DialogDescription>
@@ -492,24 +404,15 @@ export default function Team() {
                                       <div>
                                         <p className="text-sm font-medium mb-2">Current Roles:</p>
                                         <div className="flex flex-wrap gap-2">
-                                          {member.roles.length === 0 ? (
-                                            <Badge variant="outline">No roles assigned</Badge>
-                                          ) : (
-                                            member.roles.map((role) => (
-                                              <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                          {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
                                                 {role}
-                                                <X
-                                                  className="h-3 w-3 cursor-pointer"
-                                                  onClick={() => handleRemoveRole(member.id, role as any)}
-                                                />
-                                              </Badge>
-                                            ))
-                                          )}
+                                                <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
+                                              </Badge>)}
                                         </div>
                                       </div>
                                       <div>
                                         <p className="text-sm font-medium mb-2">Add Role:</p>
-                                        <Select onValueChange={(role) => handleAddRole(member.id, role as any)}>
+                                        <Select onValueChange={role => handleAddRole(member.id, role as any)}>
                                           <SelectTrigger>
                                             <SelectValue placeholder="Select a role" />
                                           </SelectTrigger>
@@ -524,12 +427,10 @@ export default function Team() {
                                     </div>
                                   </DialogContent>
                                 </Dialog>
-                              </div>
-                            )}
+                              </div>}
                           </div>
                         </div>
-                      </>
-                    )}
+                      </>}
                   </div>
                 </div>
               </CardHeader>
@@ -549,24 +450,18 @@ export default function Team() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
 
-        {selectedMember && (
-          <Card>
+        {selectedMember && <Card>
             <CardHeader>
               <CardTitle>
                 Cases for{" "}
-                {teamMembers.find((m) => m.id === selectedMember)?.full_name ||
-                  teamMembers.find((m) => m.id === selectedMember)?.email}
+                {teamMembers.find(m => m.id === selectedMember)?.full_name || teamMembers.find(m => m.id === selectedMember)?.email}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {memberCases.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
-              ) : (
-                <Table>
+              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Name</TableHead>
@@ -576,8 +471,7 @@ export default function Team() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberCases.map((case_) => (
-                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
                         <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
@@ -588,15 +482,11 @@ export default function Team() {
                         <TableCell className="text-muted-foreground">
                           {new Date(case_.created_at).toLocaleDateString()}
                         </TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>)}
                   </TableBody>
-                </Table>
-              )}
+                </Table>}
             </CardContent>
-          </Card>
-        )}
+          </Card>}
       </main>
-    </div>
-  );
+    </div>;
 }
