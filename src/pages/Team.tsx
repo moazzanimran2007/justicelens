@@ -6,10 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Check, X, Shield, UserCog, Users as UsersIcon, Upload, Image as ImageIcon } from "lucide-react";
+import { Pencil, Check, X, Shield, Upload } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
@@ -45,13 +44,6 @@ export default function Team() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
-  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
-  const [editingNickname, setEditingNickname] = useState("");
-  const [editingJobTitle, setEditingJobTitle] = useState("");
-  const [editingTeamName, setEditingTeamName] = useState("");
-  const [editingBio, setEditingBio] = useState("");
-  const [managingRolesMemberId, setManagingRolesMemberId] = useState<string | null>(null);
   const [teamStats, setTeamStats] = useState({
     totalCases: 0,
     totalUrgent: 0,
@@ -370,48 +362,6 @@ export default function Team() {
         return "outline";
     }
   };
-  const handleStartEdit = (member: TeamMember) => {
-    setEditingMemberId(member.id);
-    setEditingName(member.full_name || "");
-    setEditingNickname(member.nickname || "");
-    setEditingJobTitle(member.job_title || "");
-    setEditingTeamName(member.team_name || "");
-    setEditingBio(member.bio || "");
-  };
-  const handleCancelEdit = () => {
-    setEditingMemberId(null);
-    setEditingName("");
-    setEditingNickname("");
-    setEditingJobTitle("");
-    setEditingTeamName("");
-    setEditingBio("");
-  };
-  const handleSaveEdit = async (memberId: string) => {
-    try {
-      const {
-        error
-      } = await supabase.from("profiles").update({
-        full_name: editingName || null,
-        nickname: editingNickname || null,
-        job_title: editingJobTitle || null,
-        team_name: editingTeamName || null,
-        bio: editingBio || null
-      }).eq("id", memberId);
-      if (error) throw error;
-      toast({
-        title: "Success",
-        description: "Team member information updated"
-      });
-      handleCancelEdit();
-      fetchTeamData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
   const handleAddRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
     try {
       const {
@@ -607,136 +557,144 @@ export default function Team() {
         </div>
 
         {/* Team Members Section */}
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">Team Members</h3>
-          <p className="text-sm text-muted-foreground">Click on a member to view their cases</p>
-        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Team Members</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Click on a member to view their cases</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {teamMembers.map(member => (
+                <div
+                  key={member.id}
+                  className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${
+                    selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"
+                  }`}
+                  onClick={() => setSelectedMember(member.id)}
+                >
+                  {/* Avatar */}
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(member.full_name, member.email)}
+                    </AvatarFallback>
+                  </Avatar>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
-          {teamMembers.map(member => <Card key={member.id} className={`cursor-pointer transition-colors hover:border-primary ${selectedMember === member.id ? "border-primary bg-primary/5" : ""}`} onClick={() => setSelectedMember(member.id)}>
-              <CardHeader className="flex flex-row items-center gap-4 pb-3">
-                <Avatar>
-                  <AvatarImage src={member.avatar_url || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {getInitials(member.full_name, member.email)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {editingMemberId === member.id ? <div className="flex flex-col gap-2 flex-1" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                          <Input value={editingName} onChange={e => setEditingName(e.target.value)} placeholder="Full Name" className="h-8 text-sm" />
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={e => {
-                      e.stopPropagation();
-                      handleSaveEdit(member.id);
-                    }}>
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={e => {
-                      e.stopPropagation();
-                      handleCancelEdit();
-                    }}>
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Input value={editingNickname} onChange={e => setEditingNickname(e.target.value)} placeholder="Nickname" className="h-8 text-sm" />
-                        <Input value={editingJobTitle} onChange={e => setEditingJobTitle(e.target.value)} placeholder="Job Title" className="h-8 text-sm" />
-                        
-                        
-                      </div> : <>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1">
-                              <CardTitle className="text-base truncate">
-                                {member.nickname ? `${member.nickname} (${member.full_name || member.email})` : member.full_name || member.email}
-                              </CardTitle>
-                              {member.job_title && <p className="text-xs text-muted-foreground">{member.job_title}</p>}
-                              {member.team_name && <Badge variant="outline" className="text-xs mt-1">
-                                  {member.team_name}
-                                </Badge>}
+                  {/* Name and Role */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm truncate">
+                        {member.full_name || member.email}
+                      </h4>
+                      {isAdmin && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0" 
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Shield className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent onClick={(e) => e.stopPropagation()}>
+                            <DialogHeader>
+                              <DialogTitle>Manage Roles</DialogTitle>
+                              <DialogDescription>
+                                Assign or remove roles for {member.full_name || member.email}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-sm font-medium mb-2">Current Roles:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {member.roles.length === 0 ? (
+                                    <Badge variant="outline">No roles assigned</Badge>
+                                  ) : (
+                                    member.roles.map(role => (
+                                      <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                        {role}
+                                        <X 
+                                          className="h-3 w-3 cursor-pointer" 
+                                          onClick={() => handleRemoveRole(member.id, role as any)} 
+                                        />
+                                      </Badge>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium mb-2">Add Role:</p>
+                                <Select onValueChange={role => handleAddRole(member.id, role as any)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="attorney">Attorney</SelectItem>
+                                    <SelectItem value="investigator">Investigator</SelectItem>
+                                    <SelectItem value="advocate">Advocate</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                            {isAdmin && <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => {
-                          e.stopPropagation();
-                          handleStartEdit(member);
-                        }}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
-                                      <Shield className="h-3 w-3" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent onClick={e => e.stopPropagation()}>
-                                    <DialogHeader>
-                                      <DialogTitle>Manage Roles</DialogTitle>
-                                      <DialogDescription>
-                                        Assign or remove roles for {member.full_name || member.email}
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <p className="text-sm font-medium mb-2">Current Roles:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
-                                                {role}
-                                                <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
-                                              </Badge>)}
-                                        </div>
-                                      </div>
-                                      <div>
-                                        <p className="text-sm font-medium mb-2">Add Role:</p>
-                                        <Select onValueChange={role => handleAddRole(member.id, role as any)}>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select a role" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="admin">Admin</SelectItem>
-                                            <SelectItem value="attorney">Attorney</SelectItem>
-                                            <SelectItem value="investigator">Investigator</SelectItem>
-                                            <SelectItem value="advocate">Advocate</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-                                  </DialogContent>
-                                </Dialog>
-                              </div>}
-                          </div>
-                        </div>
-                      </>}
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {member.roles.length > 0 ? (
+                        member.roles.map(role => (
+                          <Badge key={role} variant="outline" className="text-xs">
+                            {role}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No role assigned</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-2xl font-bold">{member.case_count}</p>
-                    <p className="text-xs text-muted-foreground">Total Cases</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">{member.high_priority_count}</p>
-                    <p className="text-xs text-muted-foreground">High</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-red-600">{member.urgent_count}</p>
-                    <p className="text-xs text-muted-foreground">Urgent</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>)}
-        </div>
 
-        {selectedMember && <Card>
+                  {/* Stats */}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="text-center">
+                      <p className="font-bold text-lg">{member.case_count}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-lg text-orange-600">{member.high_priority_count}</p>
+                      <p className="text-xs text-muted-foreground">High</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-lg text-red-600">{member.urgent_count}</p>
+                      <p className="text-xs text-muted-foreground">Urgent</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {selectedMember && (
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle>
                 Cases for{" "}
-                {teamMembers.find(m => m.id === selectedMember)?.full_name || teamMembers.find(m => m.id === selectedMember)?.email}
+                {teamMembers.find(m => m.id === selectedMember)?.full_name || 
+                 teamMembers.find(m => m.id === selectedMember)?.email}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
+              {memberCases.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Name</TableHead>
@@ -746,7 +704,8 @@ export default function Team() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                    {memberCases.map(case_ => (
+                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
                         <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
@@ -757,11 +716,14 @@ export default function Team() {
                         <TableCell className="text-muted-foreground">
                           {new Date(case_.created_at).toLocaleDateString()}
                         </TableCell>
-                      </TableRow>)}
+                      </TableRow>
+                    ))}
                   </TableBody>
-                </Table>}
+                </Table>
+              )}
             </CardContent>
-          </Card>}
+          </Card>
+        )}
       </main>
     </div>;
 }
