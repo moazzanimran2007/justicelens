@@ -23,6 +23,7 @@ interface TeamMember {
   case_count: number;
   high_priority_count: number;
   urgent_count: number;
+  roles: string[];
 }
 
 interface CaseInfo {
@@ -72,6 +73,17 @@ export default function Team() {
 
     if (profilesError || !profiles) return;
 
+    // Get roles for all users
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("user_id, role");
+
+    const rolesByUser = (rolesData || []).reduce((acc, { user_id, role }) => {
+      if (!acc[user_id]) acc[user_id] = [];
+      acc[user_id].push(role);
+      return acc;
+    }, {} as Record<string, string[]>);
+
     // Get case counts for each member
     const membersWithCounts = await Promise.all(
       profiles.map(async (profile) => {
@@ -97,6 +109,7 @@ export default function Team() {
           case_count: totalCount || 0,
           high_priority_count: highPriorityCount || 0,
           urgent_count: urgentCount || 0,
+          roles: rolesByUser[profile.id] || [],
         };
       })
     );
@@ -204,9 +217,16 @@ export default function Team() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base truncate">
-                    {member.full_name || member.email}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base truncate">
+                      {member.full_name || member.email}
+                    </CardTitle>
+                    {member.roles.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {member.roles[0]}
+                      </Badge>
+                    )}
+                  </div>
                   {member.full_name && (
                     <p className="text-xs text-muted-foreground truncate">
                       {member.email}
