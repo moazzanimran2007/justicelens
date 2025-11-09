@@ -29,7 +29,6 @@ export const KanbanBoard = () => {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
-  const [draggedCase, setDraggedCase] = useState<Case | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,40 +62,6 @@ export const KanbanBoard = () => {
     setCases(data || []);
   };
 
-  const handleDragStart = (e: React.DragEvent, caseItem: Case) => {
-    setDraggedCase(caseItem);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = async (e: React.DragEvent, stageId: string) => {
-    e.preventDefault();
-    if (!draggedCase || draggedCase.stage_id === stageId) {
-      setDraggedCase(null);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("analyses")
-      .update({ stage_id: stageId })
-      .eq("id", draggedCase.id);
-
-    if (error) {
-      toast({ title: "Error updating case", variant: "destructive" });
-      return;
-    }
-
-    setCases((prev) =>
-      prev.map((c) => (c.id === draggedCase.id ? { ...c, stage_id: stageId } : c))
-    );
-
-    toast({ title: "Case moved successfully" });
-    setDraggedCase(null);
-  };
 
   const getCasesForStage = (stageId: string) => {
     return cases.filter((c) => c.stage_id === stageId);
@@ -109,8 +74,6 @@ export const KanbanBoard = () => {
           <div
             key={stage.id}
             className="flex-shrink-0 w-80"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, stage.id)}
           >
             <Card className="h-full bg-muted/30">
               <div className="p-4 border-b">
@@ -130,7 +93,6 @@ export const KanbanBoard = () => {
                   <CaseCard
                     key={caseItem.id}
                     caseItem={caseItem}
-                    onDragStart={handleDragStart}
                     onClick={() => setSelectedCase(caseItem)}
                   />
                 ))}

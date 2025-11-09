@@ -14,11 +14,10 @@ interface CaseCardProps {
     created_at: string;
     status: string;
   };
-  onDragStart: (e: React.DragEvent, caseItem: any) => void;
   onClick: () => void;
 }
 
-export const CaseCard = ({ caseItem, onDragStart, onClick }: CaseCardProps) => {
+export const CaseCard = ({ caseItem, onClick }: CaseCardProps) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
@@ -34,8 +33,6 @@ export const CaseCard = ({ caseItem, onDragStart, onClick }: CaseCardProps) => {
 
   return (
     <Card
-      draggable
-      onDragStart={(e) => onDragStart(e, caseItem)}
       onClick={onClick}
       className="p-3 cursor-pointer hover:shadow-md transition-shadow bg-card"
     >

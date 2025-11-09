@@ -13,6 +13,7 @@ import { CommentsSection } from "./CommentsSection";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AssignmentSelector } from "./AssignmentSelector";
 import { PrioritySelector } from "./PrioritySelector";
+import { StageSelector } from "./StageSelector";
 import AnalysisResults from "./AnalysisResults";
 import { X, FileText } from "lucide-react";
 
@@ -74,7 +75,8 @@ export const CaseDetailsModal = ({
                 <p className="text-sm text-muted-foreground">{caseData.case_number}</p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <StageSelector caseId={caseId} currentStageId={caseData.stage_id} onUpdate={handleUpdate} />
               <AssignmentSelector caseId={caseId} currentAssignee={caseData.assigned_to} onUpdate={handleUpdate} />
               <PrioritySelector caseId={caseId} currentPriority={caseData.priority} onUpdate={handleUpdate} />
             </div>
