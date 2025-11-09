@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LogOut, Upload, LayoutDashboard, Users } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -80,15 +73,16 @@ export default function Team() {
     if (profilesError || !profiles) return;
 
     // Get roles for all users
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
+    const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
 
-    const rolesByUser = (rolesData || []).reduce((acc, { user_id, role }) => {
-      if (!acc[user_id]) acc[user_id] = [];
-      acc[user_id].push(role);
-      return acc;
-    }, {} as Record<string, string[]>);
+    const rolesByUser = (rolesData || []).reduce(
+      (acc, { user_id, role }) => {
+        if (!acc[user_id]) acc[user_id] = [];
+        acc[user_id].push(role);
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
 
     // Get case counts for each member
     const membersWithCounts = await Promise.all(
@@ -117,16 +111,16 @@ export default function Team() {
           urgent_count: urgentCount || 0,
           roles: rolesByUser[profile.id] || [],
         };
-      })
+      }),
     );
 
     setTeamMembers(membersWithCounts);
-    
+
     // Calculate team-wide statistics
     const totalCases = membersWithCounts.reduce((sum, m) => sum + m.case_count, 0);
     const totalUrgent = membersWithCounts.reduce((sum, m) => sum + m.urgent_count, 0);
     const totalHigh = membersWithCounts.reduce((sum, m) => sum + m.high_priority_count, 0);
-    
+
     setTeamStats({
       totalCases,
       totalUrgent,
@@ -185,13 +179,13 @@ export default function Team() {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold">JusticeLens</h1>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  New Case
-                </Button>
                 <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Pipeline
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  New Case
                 </Button>
                 <Button variant="ghost" size="sm">
                   <Users className="w-4 h-4 mr-2" />
@@ -214,9 +208,7 @@ export default function Team() {
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-2">Team Dashboard</h2>
-          <p className="text-sm text-muted-foreground">
-            View team members and their workload distribution
-          </p>
+          <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
         </div>
 
         {/* Team Statistics Overview */}
@@ -230,19 +222,17 @@ export default function Team() {
               <p className="text-xs text-muted-foreground mt-1">Active members</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{teamStats.totalCases}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                ~{teamStats.avgCasesPerMember} per member
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">~{teamStats.avgCasesPerMember} per member</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <p className="text-sm font-medium text-muted-foreground">High Priority</p>
@@ -250,13 +240,12 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-orange-600">{teamStats.totalHigh}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 
-                  ? Math.round((teamStats.totalHigh / teamStats.totalCases) * 100) 
-                  : 0}% of total
+                {teamStats.totalCases > 0 ? Math.round((teamStats.totalHigh / teamStats.totalCases) * 100) : 0}% of
+                total
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-3">
               <p className="text-sm font-medium text-muted-foreground">Urgent</p>
@@ -264,9 +253,8 @@ export default function Team() {
             <CardContent>
               <div className="text-3xl font-bold text-red-600">{teamStats.totalUrgent}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {teamStats.totalCases > 0 
-                  ? Math.round((teamStats.totalUrgent / teamStats.totalCases) * 100) 
-                  : 0}% of total
+                {teamStats.totalCases > 0 ? Math.round((teamStats.totalUrgent / teamStats.totalCases) * 100) : 0}% of
+                total
               </p>
             </CardContent>
           </Card>
@@ -295,20 +283,14 @@ export default function Team() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-base truncate">
-                      {member.full_name || member.email}
-                    </CardTitle>
+                    <CardTitle className="text-base truncate">{member.full_name || member.email}</CardTitle>
                     {member.roles.length > 0 && (
                       <Badge variant="secondary" className="text-xs">
                         {member.roles[0]}
                       </Badge>
                     )}
                   </div>
-                  {member.full_name && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {member.email}
-                    </p>
-                  )}
+                  {member.full_name && <p className="text-xs text-muted-foreground truncate">{member.email}</p>}
                 </div>
               </CardHeader>
               <CardContent>
@@ -318,15 +300,11 @@ export default function Team() {
                     <p className="text-xs text-muted-foreground">Total Cases</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {member.high_priority_count}
-                    </p>
+                    <p className="text-2xl font-bold text-orange-600">{member.high_priority_count}</p>
                     <p className="text-xs text-muted-foreground">High</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-red-600">
-                      {member.urgent_count}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600">{member.urgent_count}</p>
                     <p className="text-xs text-muted-foreground">Urgent</p>
                   </div>
                 </div>
@@ -346,9 +324,7 @@ export default function Team() {
             </CardHeader>
             <CardContent>
               {memberCases.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No cases assigned
-                </p>
+                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
               ) : (
                 <Table>
                   <TableHeader>
@@ -361,18 +337,10 @@ export default function Team() {
                   </TableHeader>
                   <TableBody>
                     {memberCases.map((case_) => (
-                      <TableRow
-                        key={case_.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate("/")}
-                      >
-                        <TableCell className="font-medium">
-                          {case_.client_name || case_.file_name}
-                        </TableCell>
+                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                        <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
-                          <Badge variant={getPriorityColor(case_.priority)}>
-                            {case_.priority}
-                          </Badge>
+                          <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{case_.status}</Badge>
