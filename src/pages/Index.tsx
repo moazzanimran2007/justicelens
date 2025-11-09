@@ -155,7 +155,7 @@ const Index = () => {
           });
 
           // Call edge function for analysis
-          const { error: functionError } = await supabase.functions.invoke('analyze-transcript', {
+          const { data: functionData, error: functionError } = await supabase.functions.invoke('analyze-transcript', {
             body: {
               analysisId: analysisData.id,
               transcriptText: text,
@@ -164,21 +164,36 @@ const Index = () => {
           });
 
           if (functionError) {
-            if (functionError.message.includes("Rate limit")) {
+            // Check for 402 Payment Required (AI credits exhausted)
+            if (functionError.message.includes("402") || functionError.message.includes("credits exhausted")) {
               toast({
-                title: `Rate limit for ${file.name}`,
-                description: "Waiting before continuing...",
+                title: "⚠️ AI Credits Exhausted",
+                description: "Add credits in Settings → Workspace → Usage to continue analysis.",
+                variant: "destructive",
+                duration: 8000,
+              });
+              failedFiles.push(file.name);
+              break; // Stop processing remaining files
+            } 
+            // Check for 429 Rate Limit
+            else if (functionError.message.includes("429") || functionError.message.includes("Rate limit")) {
+              toast({
+                title: "⏱️ Rate Limit Reached",
+                description: `Waiting 10 seconds before retrying ${file.name}...`,
                 variant: "destructive",
               });
-              await new Promise(resolve => setTimeout(resolve, 5000));
-              continue;
-            } else if (functionError.message.includes("credits")) {
-              toast({
-                title: "Credits exhausted",
-                description: "Cannot continue batch processing.",
-                variant: "destructive",
+              await new Promise(resolve => setTimeout(resolve, 10000));
+              // Retry this file once
+              const { error: retryError } = await supabase.functions.invoke('analyze-transcript', {
+                body: {
+                  analysisId: analysisData.id,
+                  transcriptText: text,
+                  modules: selectedModules
+                }
               });
-              break;
+              if (retryError) {
+                throw retryError; // If retry fails, throw to outer catch
+              }
             } else {
               throw functionError;
             }
