@@ -123,6 +123,7 @@ export type Database = {
           comment_text: string
           created_at: string
           id: string
+          mentioned_users: string[] | null
           updated_at: string
           user_id: string
         }
@@ -131,6 +132,7 @@ export type Database = {
           comment_text: string
           created_at?: string
           id?: string
+          mentioned_users?: string[] | null
           updated_at?: string
           user_id: string
         }
@@ -139,6 +141,7 @@ export type Database = {
           comment_text?: string
           created_at?: string
           id?: string
+          mentioned_users?: string[] | null
           updated_at?: string
           user_id?: string
         }
