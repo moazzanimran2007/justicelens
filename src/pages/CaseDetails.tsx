@@ -36,7 +36,7 @@ export default function CaseDetails() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lawmaticsMatterId, setLawmaticsMatterId] = useState("");
   const [transferring, setTransferring] = useState(false);
-  const [isLastStage, setIsLastStage] = useState(false);
+  const [currentStageName, setCurrentStageName] = useState<string>("");
 
   useEffect(() => {
     checkAuth();
@@ -67,22 +67,21 @@ export default function CaseDetails() {
       .from("analyses")
       .select("*")
       .eq("id", id)
-      .maybeSingle();
+      .single();
 
     if (!error && data) {
       setCaseData(data);
       
-      // Check if current stage is the last stage
+      // Fetch stage name
       if (data.stage_id) {
-        const { data: stages } = await supabase
+        const { data: stageData } = await supabase
           .from("pipeline_stages")
-          .select("id, display_order")
-          .order("display_order", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .select("name")
+          .eq("id", data.stage_id)
+          .single();
         
-        if (stages) {
-          setIsLastStage(data.stage_id === stages.id);
+        if (stageData) {
+          setCurrentStageName(stageData.name);
         }
       }
     } else if (error) {
@@ -454,8 +453,8 @@ export default function CaseDetails() {
                       </div>
                     )}
 
-                    {/* Lawmatics Transfer - Only for last stage */}
-                    {isLastStage && (
+                    {/* Lawmatics Transfer - Only for Advocacy Ready stage */}
+                    {currentStageName.toLowerCase() === "advocacy ready" && (
                       <div className="border-t pt-6">
                         <h3 className="text-lg font-semibold mb-4">Transfer to Lawmatics</h3>
                         <div className="space-y-4">

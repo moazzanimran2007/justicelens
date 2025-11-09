@@ -49,7 +49,7 @@ export const CaseDetailsModal = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lawmaticsMatterId, setLawmaticsMatterId] = useState("");
   const [transferring, setTransferring] = useState(false);
-  const [isLastStage, setIsLastStage] = useState(false);
+  const [currentStageName, setCurrentStageName] = useState<string>("");
 
   useEffect(() => {
     if (isOpen && caseId) {
@@ -63,22 +63,21 @@ export const CaseDetailsModal = ({
       .from("analyses")
       .select("*")
       .eq("id", caseId)
-      .maybeSingle();
+      .single();
 
     if (!error && data) {
       setCaseData(data);
       
-      // Check if current stage is the last stage
+      // Fetch stage name
       if (data.stage_id) {
-        const { data: stages } = await supabase
+        const { data: stageData } = await supabase
           .from("pipeline_stages")
-          .select("id, display_order")
-          .order("display_order", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .select("name")
+          .eq("id", data.stage_id)
+          .single();
         
-        if (stages) {
-          setIsLastStage(data.stage_id === stages.id);
+        if (stageData) {
+          setCurrentStageName(stageData.name);
         }
       }
     }
@@ -239,7 +238,7 @@ export const CaseDetailsModal = ({
                 </div>
               </div>
 
-              {isLastStage && (
+              {currentStageName.toLowerCase() === "advocacy ready" && (
                 <div className="border-t pt-4 mt-6">
                   <h3 className="text-sm font-semibold mb-4">Transfer to Lawmatics</h3>
                   <div className="space-y-4">
