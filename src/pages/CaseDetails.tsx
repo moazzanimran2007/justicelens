@@ -22,7 +22,7 @@ import { PrioritySelector } from "@/components/PrioritySelector";
 import { StageSelector } from "@/components/StageSelector";
 import { NotificationBell } from "@/components/NotificationBell";
 import AnalysisResults from "@/components/AnalysisResults";
-import { ArrowLeft, FileText, Trash2, LogOut, Upload, LayoutDashboard, Users } from "lucide-react";
+import { ArrowLeft, FileText, Trash2, LogOut, Upload, LayoutDashboard, Users, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CaseDetails() {
@@ -218,11 +218,30 @@ export default function CaseDetails() {
                       <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-sm font-medium">File Name</label>
-                          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                          <label className="text-sm font-medium">Transcript File</label>
+                          <Button
+                            variant="link"
+                            className="h-auto p-0 text-sm text-primary hover:underline flex items-center gap-2 mt-1"
+                            onClick={async () => {
+                              const { data } = await supabase.storage
+                                .from('transcripts')
+                                .createSignedUrl(caseData.file_path, 3600);
+                              
+                              if (data?.signedUrl) {
+                                window.open(data.signedUrl, '_blank');
+                              } else {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to open PDF file",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
                             <FileText className="w-4 h-4" />
                             {caseData.file_name}
-                          </p>
+                            <ExternalLink className="w-3 h-3" />
+                          </Button>
                         </div>
                         <div>
                           <label className="text-sm font-medium">Status</label>
