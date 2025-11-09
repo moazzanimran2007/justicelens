@@ -251,16 +251,36 @@ export default function CaseDetails() {
                             variant="link"
                             className="h-auto p-0 text-sm text-primary hover:underline flex items-center gap-2 mt-1"
                             onClick={async () => {
-                              const { data } = await supabase.storage
-                                .from('transcripts')
-                                .createSignedUrl(caseData.file_path, 3600);
-                              
-                              if (data?.signedUrl) {
-                                window.open(data.signedUrl, '_blank');
-                              } else {
+                              try {
+                                console.log('Attempting to access file:', caseData.file_path);
+                                const { data, error } = await supabase.storage
+                                  .from('transcripts')
+                                  .createSignedUrl(caseData.file_path, 3600);
+                                
+                                if (error) {
+                                  console.error('Storage error:', error);
+                                  toast({
+                                    title: "Error accessing file",
+                                    description: error.message || "Failed to create download link",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                
+                                if (data?.signedUrl) {
+                                  window.open(data.signedUrl, '_blank');
+                                } else {
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to generate file link",
+                                    variant: "destructive",
+                                  });
+                                }
+                              } catch (err) {
+                                console.error('Unexpected error:', err);
                                 toast({
                                   title: "Error",
-                                  description: "Failed to open PDF file",
+                                  description: err instanceof Error ? err.message : "An unexpected error occurred",
                                   variant: "destructive",
                                 });
                               }
