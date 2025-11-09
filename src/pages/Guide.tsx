@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, ArrowLeft, AlertCircle, BarChart3, FileText, MessageSquare } from "lucide-react";
+import { Brain, ArrowLeft, AlertCircle, BarChart3, FileText, MessageSquare, Scale } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Guide = () => {
@@ -40,6 +40,116 @@ const Guide = () => {
               This guide will help you understand what each analysis module reveals and how to use the insights 
               to advocate more effectively for justice reform.
             </p>
+          </Card>
+
+          {/* Innocence Likelihood Score */}
+          <Card className="p-8 border-border shadow-lg bg-gradient-to-br from-primary/5 to-primary/10">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 rounded-lg bg-primary/20">
+                <Scale className="w-8 h-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-foreground mb-3">
+                  Innocence Likelihood Score
+                </h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">What It Measures:</h4>
+                    <p className="text-muted-foreground mb-3">
+                      An AI-calculated composite score (0-100) that synthesizes findings from innocence claims, 
+                      bias indicators, wrongful conviction issues, and evidence quality assessment. This score 
+                      serves as a screening tool to prioritize cases for further investigation.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Score Ranges:</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <span className="px-3 py-1 bg-primary text-primary-foreground text-xs rounded font-semibold">75-100</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">High Likelihood</p>
+                          <p className="text-sm text-muted-foreground">
+                            Strong indicators suggest potential wrongful conviction. Priority: <strong>Urgent/High</strong>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="px-3 py-1 bg-warning text-warning-foreground text-xs rounded font-semibold">50-74</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">Moderate Likelihood</p>
+                          <p className="text-sm text-muted-foreground">
+                            Notable concerns warrant further investigation. Priority: <strong>Medium/High</strong>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="px-3 py-1 bg-accent text-accent-foreground text-xs rounded font-semibold">25-49</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">Low-Moderate Likelihood</p>
+                          <p className="text-sm text-muted-foreground">
+                            Some indicators present but not conclusive. Priority: <strong>Medium/Low</strong>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="px-3 py-1 bg-muted text-muted-foreground text-xs rounded font-semibold">0-24</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-foreground">Low Likelihood</p>
+                          <p className="text-sm text-muted-foreground">
+                            Limited indicators of potential innocence. Priority: <strong>Low</strong>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Score Components:</h4>
+                    <ul className="list-disc list-inside space-y-2 text-muted-foreground">
+                      <li><strong>Innocence Claims (30 pts max):</strong> 5 points per claim detected</li>
+                      <li><strong>Wrongful Conviction Issues (35 pts max):</strong> 7 points per issue identified</li>
+                      <li><strong>Bias Indicators (25 pts max):</strong> Weighted by severity (high=2x, moderate=1.5x)</li>
+                      <li><strong>Evidence Quality (10 pts max):</strong> Fewer pieces of evidence may indicate weaker case</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Automatic Priority Assignment:</h4>
+                    <p className="text-muted-foreground mb-2">
+                      Cases are automatically assigned priorities based on their innocence score:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 bg-destructive/10 rounded text-center">
+                        <p className="font-semibold text-destructive text-sm">Urgent</p>
+                        <p className="text-xs text-muted-foreground">Score &gt; 80</p>
+                      </div>
+                      <div className="p-2 bg-primary/10 rounded text-center">
+                        <p className="font-semibold text-primary text-sm">High</p>
+                        <p className="text-xs text-muted-foreground">Score 66-80</p>
+                      </div>
+                      <div className="p-2 bg-secondary/50 rounded text-center">
+                        <p className="font-semibold text-secondary-foreground text-sm">Medium</p>
+                        <p className="text-xs text-muted-foreground">Score 36-65</p>
+                      </div>
+                      <div className="p-2 bg-muted rounded text-center">
+                        <p className="font-semibold text-muted-foreground text-sm">Low</p>
+                        <p className="text-xs text-muted-foreground">Score &lt; 36</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-background p-4 rounded-lg border-2 border-primary">
+                    <p className="text-sm text-foreground">
+                      <strong>Important Note:</strong> This score is generated by AI analysis and should be used as a 
+                      screening tool only. It does not constitute legal advice and requires human review and validation. 
+                      High scores indicate cases that may benefit from deeper investigation by legal experts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Innocence Claims */}
