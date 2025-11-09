@@ -176,13 +176,11 @@ export default function Team() {
       setMemberCases(data);
     }
   };
-
   const fetchTeamSettings = async () => {
-    const { data, error } = await supabase
-      .from("team_settings")
-      .select("*")
-      .maybeSingle();
-    
+    const {
+      data,
+      error
+    } = await supabase.from("team_settings").select("*").maybeSingle();
     if (!error && data) {
       setTeamSettings({
         id: data.id,
@@ -192,7 +190,6 @@ export default function Team() {
       });
     }
   };
-
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
@@ -216,9 +213,7 @@ export default function Team() {
       });
       return;
     }
-
     setUploadingLogo(true);
-
     try {
       // Delete old logo if exists
       if (teamSettings.logo_url) {
@@ -231,34 +226,32 @@ export default function Team() {
       // Upload new logo
       const fileExt = file.name.split('.').pop();
       const fileName = `team-logo-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('team-logos')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
+      const {
+        error: uploadError
+      } = await supabase.storage.from('team-logos').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
       if (uploadError) throw uploadError;
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('team-logos')
-        .getPublicUrl(fileName);
+      const {
+        data: {
+          publicUrl
+        }
+      } = supabase.storage.from('team-logos').getPublicUrl(fileName);
 
       // Update team settings
-      const { error: updateError } = await supabase
-        .from('team_settings')
-        .update({ logo_url: publicUrl })
-        .eq('id', teamSettings.id);
-
+      const {
+        error: updateError
+      } = await supabase.from('team_settings').update({
+        logo_url: publicUrl
+      }).eq('id', teamSettings.id);
       if (updateError) throw updateError;
-
       toast({
         title: "Success",
         description: "Team logo updated successfully"
       });
-
       fetchTeamSettings();
     } catch (error: any) {
       console.error('Error uploading logo:', error);
@@ -271,10 +264,8 @@ export default function Team() {
       setUploadingLogo(false);
     }
   };
-
   const handleRemoveLogo = async () => {
     if (!teamSettings.logo_url) return;
-
     try {
       // Delete from storage
       const path = teamSettings.logo_url.split('/').pop();
@@ -283,18 +274,16 @@ export default function Team() {
       }
 
       // Update team settings
-      const { error } = await supabase
-        .from('team_settings')
-        .update({ logo_url: null })
-        .eq('id', teamSettings.id);
-
+      const {
+        error
+      } = await supabase.from('team_settings').update({
+        logo_url: null
+      }).eq('id', teamSettings.id);
       if (error) throw error;
-
       toast({
         title: "Success",
         description: "Team logo removed"
       });
-
       fetchTeamSettings();
     } catch (error: any) {
       toast({
@@ -304,36 +293,29 @@ export default function Team() {
       });
     }
   };
-
   const handleStartEditTeamSettings = () => {
     setEditingTeamSettings(true);
     setEditingTeamSettingsName(teamSettings.team_name);
     setEditingTeamSettingsIcon(teamSettings.team_icon);
   };
-
   const handleCancelEditTeamSettings = () => {
     setEditingTeamSettings(false);
     setEditingTeamSettingsName("");
     setEditingTeamSettingsIcon("");
   };
-
   const handleSaveTeamSettings = async () => {
     try {
-      const { error } = await supabase
-        .from("team_settings")
-        .update({
-          team_name: editingTeamSettingsName,
-          team_icon: editingTeamSettingsIcon
-        })
-        .eq("id", teamSettings.id);
-
+      const {
+        error
+      } = await supabase.from("team_settings").update({
+        team_name: editingTeamSettingsName,
+        team_icon: editingTeamSettingsIcon
+      }).eq("id", teamSettings.id);
       if (error) throw error;
-
       toast({
         title: "Success",
         description: "Team settings updated"
       });
-
       handleCancelEditTeamSettings();
       fetchTeamSettings();
     } catch (error: any) {
@@ -412,39 +394,19 @@ export default function Team() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {editingTeamSettings ? (
-                  <div className="flex items-center gap-3">
-                    <Input
-                      value={editingTeamSettingsIcon}
-                      onChange={(e) => setEditingTeamSettingsIcon(e.target.value)}
-                      placeholder="Icon"
-                      className="w-20 text-2xl text-center"
-                      maxLength={2}
-                    />
-                    <Input
-                      value={editingTeamSettingsName}
-                      onChange={(e) => setEditingTeamSettingsName(e.target.value)}
-                      placeholder="Team Name"
-                      className="text-2xl font-bold"
-                    />
+                {editingTeamSettings ? <div className="flex items-center gap-3">
+                    <Input value={editingTeamSettingsIcon} onChange={e => setEditingTeamSettingsIcon(e.target.value)} placeholder="Icon" className="w-20 text-2xl text-center" maxLength={2} />
+                    <Input value={editingTeamSettingsName} onChange={e => setEditingTeamSettingsName(e.target.value)} placeholder="Team Name" className="text-2xl font-bold" />
                     <Button size="sm" onClick={handleSaveTeamSettings}>
                       <Check className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={handleCancelEditTeamSettings}>
                       <X className="h-4 w-4" />
                     </Button>
-                  </div>
-                ) : (
-                  <>
-                    {teamSettings.logo_url ? (
-                      <div className="relative group">
-                        <img 
-                          src={teamSettings.logo_url} 
-                          alt="Team Logo" 
-                          className="w-16 h-16 object-contain rounded-lg border border-border"
-                        />
-                        {isAdmin && (
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                  </div> : <>
+                    {teamSettings.logo_url ? <div className="relative group">
+                        <img src={teamSettings.logo_url} alt="Team Logo" className="w-16 h-16 object-contain rounded-lg border border-border" />
+                        {isAdmin && <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                             <label htmlFor="logo-upload" className="cursor-pointer">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" asChild>
                                 <span>
@@ -452,56 +414,27 @@ export default function Team() {
                                 </span>
                               </Button>
                             </label>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-7 w-7 p-0 text-white hover:text-white"
-                              onClick={handleRemoveLogo}
-                            >
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" onClick={handleRemoveLogo}>
                               <X className="h-3 w-3" />
                             </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="relative group">
+                          </div>}
+                      </div> : <div className="relative group">
                         <div className="text-4xl">{teamSettings.team_icon}</div>
-                        {isAdmin && (
-                          <label 
-                            htmlFor="logo-upload" 
-                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer"
-                          >
+                        {isAdmin && <label htmlFor="logo-upload" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
                             <Upload className="h-5 w-5 text-white" />
-                          </label>
-                        )}
-                      </div>
-                    )}
-                    <input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleLogoUpload}
-                      disabled={!isAdmin || uploadingLogo}
-                    />
+                          </label>}
+                      </div>}
+                    <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={!isAdmin || uploadingLogo} />
                     <div>
                       <h2 className="text-2xl font-bold flex items-center gap-2">
                         {teamSettings.team_name}
-                        {isAdmin && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={handleStartEditTeamSettings}
-                          >
+                        {isAdmin && <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleStartEditTeamSettings}>
                             <Pencil className="h-3 w-3" />
-                          </Button>
-                        )}
+                          </Button>}
                       </h2>
                       <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
                     </div>
-                  </>
-                )}
+                  </>}
               </div>
             </div>
           </CardContent>
@@ -521,11 +454,11 @@ export default function Team() {
 
           <Card>
             <CardHeader className="pb-3">
-              <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
+              <p className="text-sm font-medium text-muted-foreground">Your Cases</p>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{teamStats.totalCases}</div>
-              <p className="text-xs text-muted-foreground mt-1">~{teamStats.avgCasesPerMember} per member</p>
+              <p className="text-xs text-muted-foreground mt-1">Cases assigned to you{teamStats.avgCasesPerMember} per member</p>
             </CardContent>
           </Card>
 
@@ -568,14 +501,7 @@ export default function Team() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {teamMembers.map(member => (
-                <div
-                  key={member.id}
-                  className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${
-                    selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"
-                  }`}
-                  onClick={() => setSelectedMember(member.id)}
-                >
+              {teamMembers.map(member => <div key={member.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`} onClick={() => setSelectedMember(member.id)}>
                   {/* Avatar */}
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={member.avatar_url || undefined} />
@@ -590,19 +516,13 @@ export default function Team() {
                       <h4 className="font-semibold text-sm truncate">
                         {member.full_name || member.email}
                       </h4>
-                      {isAdmin && (
-                        <Dialog>
+                      {isAdmin && <Dialog>
                           <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="h-6 w-6 p-0" 
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
                               <Shield className="h-3 w-3" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent onClick={(e) => e.stopPropagation()}>
+                          <DialogContent onClick={e => e.stopPropagation()}>
                             <DialogHeader>
                               <DialogTitle>Manage Roles</DialogTitle>
                               <DialogDescription>
@@ -613,19 +533,10 @@ export default function Team() {
                               <div>
                                 <p className="text-sm font-medium mb-2">Current Roles:</p>
                                 <div className="flex flex-wrap gap-2">
-                                  {member.roles.length === 0 ? (
-                                    <Badge variant="outline">No roles assigned</Badge>
-                                  ) : (
-                                    member.roles.map(role => (
-                                      <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                  {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
                                         {role}
-                                        <X 
-                                          className="h-3 w-3 cursor-pointer" 
-                                          onClick={() => handleRemoveRole(member.id, role as any)} 
-                                        />
-                                      </Badge>
-                                    ))
-                                  )}
+                                        <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
+                                      </Badge>)}
                                 </div>
                               </div>
                               <div>
@@ -644,19 +555,12 @@ export default function Team() {
                               </div>
                             </div>
                           </DialogContent>
-                        </Dialog>
-                      )}
+                        </Dialog>}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {member.roles.length > 0 ? (
-                        member.roles.map(role => (
-                          <Badge key={role} variant="outline" className="text-xs">
+                      {member.roles.length > 0 ? member.roles.map(role => <Badge key={role} variant="outline" className="text-xs">
                             {role}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No role assigned</span>
-                      )}
+                          </Badge>) : <span className="text-xs text-muted-foreground">No role assigned</span>}
                     </div>
                   </div>
 
@@ -675,26 +579,20 @@ export default function Team() {
                       <p className="text-xs text-muted-foreground">Urgent</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
 
-        {selectedMember && (
-          <Card className="mt-6">
+        {selectedMember && <Card className="mt-6">
             <CardHeader>
               <CardTitle>
                 Cases for{" "}
-                {teamMembers.find(m => m.id === selectedMember)?.full_name || 
-                 teamMembers.find(m => m.id === selectedMember)?.email}
+                {teamMembers.find(m => m.id === selectedMember)?.full_name || teamMembers.find(m => m.id === selectedMember)?.email}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {memberCases.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
-              ) : (
-                <Table>
+              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Name</TableHead>
@@ -704,8 +602,7 @@ export default function Team() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberCases.map(case_ => (
-                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
                         <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
@@ -716,14 +613,11 @@ export default function Team() {
                         <TableCell className="text-muted-foreground">
                           {new Date(case_.created_at).toLocaleDateString()}
                         </TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>)}
                   </TableBody>
-                </Table>
-              )}
+                </Table>}
             </CardContent>
-          </Card>
-        )}
+          </Card>}
       </main>
     </div>;
 }
