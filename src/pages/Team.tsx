@@ -6,7 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Shield, UserCog } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
@@ -16,6 +19,10 @@ interface TeamMember {
   email: string;
   full_name: string | null;
   nickname: string | null;
+  job_title: string | null;
+  team_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
   case_count: number;
   high_priority_count: number;
   urgent_count: number;
@@ -42,6 +49,10 @@ export default function Team() {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [editingNickname, setEditingNickname] = useState("");
+  const [editingJobTitle, setEditingJobTitle] = useState("");
+  const [editingTeamName, setEditingTeamName] = useState("");
+  const [editingBio, setEditingBio] = useState("");
+  const [managingRolesMemberId, setManagingRolesMemberId] = useState<string | null>(null);
   const [teamStats, setTeamStats] = useState({
     totalCases: 0,
     totalUrgent: 0,
@@ -83,7 +94,7 @@ export default function Team() {
     // Get all profiles
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, full_name, nickname")
+      .select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url")
       .order("full_name");
 
     if (profilesError || !profiles) return;
@@ -193,16 +204,22 @@ export default function Team() {
     }
   };
 
-  const handleStartEdit = (memberId: string, currentName: string | null, currentNickname: string | null, email: string) => {
-    setEditingMemberId(memberId);
-    setEditingName(currentName || "");
-    setEditingNickname(currentNickname || "");
+  const handleStartEdit = (member: TeamMember) => {
+    setEditingMemberId(member.id);
+    setEditingName(member.full_name || "");
+    setEditingNickname(member.nickname || "");
+    setEditingJobTitle(member.job_title || "");
+    setEditingTeamName(member.team_name || "");
+    setEditingBio(member.bio || "");
   };
 
   const handleCancelEdit = () => {
     setEditingMemberId(null);
     setEditingName("");
     setEditingNickname("");
+    setEditingJobTitle("");
+    setEditingTeamName("");
+    setEditingBio("");
   };
 
   const handleSaveEdit = async (memberId: string) => {
@@ -211,7 +228,10 @@ export default function Team() {
         .from("profiles")
         .update({ 
           full_name: editingName || null,
-          nickname: editingNickname || null 
+          nickname: editingNickname || null,
+          job_title: editingJobTitle || null,
+          team_name: editingTeamName || null,
+          bio: editingBio || null
         })
         .eq("id", memberId);
 
@@ -222,9 +242,55 @@ export default function Team() {
         description: "Team member information updated",
       });
 
-      setEditingMemberId(null);
-      setEditingName("");
-      setEditingNickname("");
+      handleCancelEdit();
+      fetchTeamData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: memberId, role: role as any });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Role '${role}' added`,
+      });
+
+      fetchTeamData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", memberId)
+        .eq("role", role);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Role '${role}' removed`,
+      });
+
       fetchTeamData();
     } catch (error: any) {
       toast({
@@ -323,7 +389,7 @@ export default function Team() {
                           <Input
                             value={editingName}
                             onChange={(e) => setEditingName(e.target.value)}
-                            placeholder="Real Name"
+                            placeholder="Full Name"
                             className="h-8 text-sm"
                           />
                           <Button
@@ -355,37 +421,113 @@ export default function Team() {
                           placeholder="Nickname"
                           className="h-8 text-sm"
                         />
+                        <Input
+                          value={editingJobTitle}
+                          onChange={(e) => setEditingJobTitle(e.target.value)}
+                          placeholder="Job Title"
+                          className="h-8 text-sm"
+                        />
+                        <Input
+                          value={editingTeamName}
+                          onChange={(e) => setEditingTeamName(e.target.value)}
+                          placeholder="Team Name"
+                          className="h-8 text-sm"
+                        />
+                        <Textarea
+                          value={editingBio}
+                          onChange={(e) => setEditingBio(e.target.value)}
+                          placeholder="Bio"
+                          className="text-sm min-h-[60px]"
+                        />
                       </div>
                     ) : (
                       <>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <CardTitle className="text-base truncate">
-                              {member.nickname ? `${member.nickname} (${member.full_name || member.email})` : member.full_name || member.email}
-                            </CardTitle>
+                            <div className="flex-1">
+                              <CardTitle className="text-base truncate">
+                                {member.nickname ? `${member.nickname} (${member.full_name || member.email})` : member.full_name || member.email}
+                              </CardTitle>
+                              {member.job_title && (
+                                <p className="text-xs text-muted-foreground">{member.job_title}</p>
+                              )}
+                              {member.team_name && (
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  {member.team_name}
+                                </Badge>
+                              )}
+                            </div>
                             {isAdmin && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartEdit(member.id, member.full_name, member.nickname, member.email);
-                                }}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartEdit(member);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Shield className="h-3 w-3" />
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent onClick={(e) => e.stopPropagation()}>
+                                    <DialogHeader>
+                                      <DialogTitle>Manage Roles</DialogTitle>
+                                      <DialogDescription>
+                                        Assign or remove roles for {member.full_name || member.email}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <p className="text-sm font-medium mb-2">Current Roles:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {member.roles.length === 0 ? (
+                                            <Badge variant="outline">No roles assigned</Badge>
+                                          ) : (
+                                            member.roles.map((role) => (
+                                              <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                                {role}
+                                                <X
+                                                  className="h-3 w-3 cursor-pointer"
+                                                  onClick={() => handleRemoveRole(member.id, role as any)}
+                                                />
+                                              </Badge>
+                                            ))
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-medium mb-2">Add Role:</p>
+                                        <Select onValueChange={(role) => handleAddRole(member.id, role as any)}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select a role" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="admin">Admin</SelectItem>
+                                            <SelectItem value="attorney">Attorney</SelectItem>
+                                            <SelectItem value="investigator">Investigator</SelectItem>
+                                            <SelectItem value="advocate">Advocate</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
                             )}
                           </div>
-                          {!member.nickname && member.full_name && (
-                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                          )}
                         </div>
-                        {member.roles.length > 0 && (
-                          <Badge variant="secondary" className="text-xs shrink-0">
-                            {member.roles.join(", ")}
-                          </Badge>
-                        )}
                       </>
                     )}
                   </div>
