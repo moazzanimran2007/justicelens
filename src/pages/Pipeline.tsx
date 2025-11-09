@@ -86,7 +86,7 @@ export default function Pipeline() {
         <div className="container mx-auto px-6 py-12">
           <div className="max-w-4xl">
             <h1 className="text-4xl font-bold text-foreground mb-3 animate-fade-in">
-              Welcome back, {profile?.full_name || user.email.split("@")[0]}!
+              Welcome back, {user?.email.split("@")[0]}!
             </h1>
             <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: "0.1s" }}>
               Manage your case pipeline and track progress across all stages
