@@ -199,9 +199,9 @@ export const CaseCard = ({
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
               <FileText className="w-4 h-4" />
               <span>
-                {caseItem.status === "pending" || caseItem.status === "failed"
-                  ? "Analysis in progress..." 
-                  : "No analysis results available"}
+                {caseItem.status === "completed" 
+                  ? "No analysis results available" 
+                  : "Analysis in progress..."}
               </span>
             </div>
           )}

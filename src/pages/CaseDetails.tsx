@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CommentsSection } from "@/components/CommentsSection";
-import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { AssignmentSelector } from "@/components/AssignmentSelector";
 import { PrioritySelector } from "@/components/PrioritySelector";
 import { StageSelector } from "@/components/StageSelector";
@@ -202,10 +201,9 @@ export default function CaseDetails() {
           </div>
 
           <Tabs defaultValue="details" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="details">Details</TabsTrigger>
               <TabsTrigger value="analysis">Analysis</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
               <TabsTrigger value="comments">Comments</TabsTrigger>
             </TabsList>
 
@@ -246,8 +244,8 @@ export default function CaseDetails() {
                         <div>
                           <label className="text-sm font-medium">Status</label>
                           <div className="mt-1">
-                            <Badge variant={caseData.status === "pending" || caseData.status === "failed" ? "secondary" : "outline"}>
-                              {caseData.status === "pending" ? "Processing" : caseData.status === "failed" ? "Failed" : "Ready"}
+                            <Badge variant={caseData.status === "completed" ? "default" : "secondary"}>
+                              {caseData.status}
                             </Badge>
                           </div>
                         </div>
@@ -440,14 +438,6 @@ export default function CaseDetails() {
                   ) : (
                     <p className="text-sm text-muted-foreground">No analysis results available</p>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="activity">
-              <Card>
-                <CardContent className="pt-6">
-                  <ActivityTimeline caseId={id!} />
                 </CardContent>
               </Card>
             </TabsContent>

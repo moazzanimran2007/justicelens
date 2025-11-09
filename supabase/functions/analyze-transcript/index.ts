@@ -437,6 +437,7 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('analyses')
       .update({
+        status: 'completed',
         results: results
       })
       .eq('id', analysisId);

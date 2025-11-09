@@ -7,16 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   FileText, 
+  Plus, 
+  Users, 
   AlertCircle, 
+  CheckCircle, 
   Clock,
+  TrendingUp,
   Activity
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface DashboardStats {
   totalCases: number;
-  processingCases: number;
-  stageStats: Record<string, number>;
+  pendingCases: number;
+  completedCases: number;
   highPriorityCases: number;
 }
 
@@ -27,10 +31,6 @@ interface RecentCase {
   status: string;
   priority: string;
   created_at: string;
-  stage: {
-    name: string;
-    color: string;
-  } | null;
 }
 
 interface RecentActivity {
@@ -50,11 +50,10 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<DashboardStats>({
     totalCases: 0,
-    processingCases: 0,
-    stageStats: {},
+    pendingCases: 0,
+    completedCases: 0,
     highPriorityCases: 0,
   });
-  const [stages, setStages] = useState<any[]>([]);
   const [recentCases, setRecentCases] = useState<RecentCase[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
@@ -82,55 +81,29 @@ export default function Dashboard() {
     
     setProfile(profileData);
 
-    // Load stages
-    const { data: stagesData } = await supabase
-      .from("pipeline_stages")
-      .select("*")
-      .order("display_order");
-
-    if (stagesData) {
-      setStages(stagesData);
-    }
-
     // Load stats
     const { data: casesData } = await supabase
       .from("analyses")
-      .select("status, priority, stage_id");
+      .select("status, priority");
 
-    if (casesData && stagesData) {
-      const stageStats: Record<string, number> = {};
-      stagesData.forEach(stage => {
-        stageStats[stage.id] = casesData.filter(c => c.stage_id === stage.id).length;
-      });
-
+    if (casesData) {
       setStats({
         totalCases: casesData.length,
-        processingCases: casesData.filter(c => c.status === "pending" || c.status === "failed").length,
-        stageStats,
+        pendingCases: casesData.filter(c => c.status === "pending").length,
+        completedCases: casesData.filter(c => c.status === "completed").length,
         highPriorityCases: casesData.filter(c => c.priority === "high").length,
       });
     }
 
-    // Load recent cases with stage info
+    // Load recent cases
     const { data: recentCasesData } = await supabase
       .from("analyses")
-      .select(`
-        id, 
-        client_name, 
-        file_name, 
-        status, 
-        priority, 
-        created_at,
-        stage:pipeline_stages(name, color)
-      `)
+      .select("id, client_name, file_name, status, priority, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
     if (recentCasesData) {
-      setRecentCases(recentCasesData.map(c => ({
-        ...c,
-        stage: Array.isArray(c.stage) ? c.stage[0] : c.stage
-      })));
+      setRecentCases(recentCasesData);
     }
 
     // Load recent activity
@@ -174,20 +147,13 @@ export default function Dashboard() {
     return <Badge variant={variants[priority] || "default"}>{priority}</Badge>;
   };
 
-  const getStageBadge = (stage: { name: string; color: string } | null) => {
-    if (!stage) return <Badge variant="outline">No Stage</Badge>;
-    return (
-      <Badge 
-        variant="outline" 
-        style={{ 
-          borderColor: stage.color, 
-          color: stage.color,
-          backgroundColor: `${stage.color}20`
-        }}
-      >
-        {stage.name}
-      </Badge>
-    );
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "outline"> = {
+      pending: "secondary",
+      completed: "default",
+      failed: "outline",
+    };
+    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
   };
 
   if (!user) {
@@ -237,46 +203,63 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Processing
+                Pending
               </CardTitle>
               <Clock className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-warning">{stats.processingCases}</div>
+              <div className="text-2xl font-bold text-warning">{stats.pendingCases}</div>
             </CardContent>
           </Card>
 
-          {stages.slice(0, 2).map((stage) => (
-            <Card key={stage.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stage.name}
-                </CardTitle>
-                <div 
-                  className="h-4 w-4 rounded-full" 
-                  style={{ backgroundColor: stage.color }}
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.stageStats[stage.id] || 0}</div>
-              </CardContent>
-            </Card>
-          ))}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Completed
+              </CardTitle>
+              <CheckCircle className="h-4 w-4 text-success" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-success">{stats.completedCases}</div>
+            </CardContent>
+          </Card>
 
-          {stages.length < 2 && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  High Priority
-                </CardTitle>
-                <AlertCircle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{stats.highPriorityCases}</div>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                High Priority
+              </CardTitle>
+              <AlertCircle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{stats.highPriorityCases}</div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Quick Actions */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex gap-4">
+            <Button onClick={() => navigate("/new-case")} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Case
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+              <FileText className="h-4 w-4" />
+              View Pipeline
+            </Button>
+            <Button variant="outline" onClick={() => navigate("/team")} className="gap-2">
+              <Users className="h-4 w-4" />
+              Manage Team
+            </Button>
+          </CardContent>
+        </Card>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Recent Cases */}
@@ -311,7 +294,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-2">
                         {getPriorityBadge(case_.priority)}
-                        {getStageBadge(case_.stage)}
+                        {getStatusBadge(case_.status)}
                       </div>
                     </div>
                   ))
