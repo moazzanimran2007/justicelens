@@ -1,10 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, FileText, Download, ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -12,58 +10,16 @@ interface AnalysisResultsProps {
 }
 
 const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
-  const [legalMemo, setLegalMemo] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchLegalMemo = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('legal_memos')
-          .select('*')
-          .eq('analysis_id', analysis.id)
-          .single();
-
-        if (error) throw error;
-        setLegalMemo(data);
-      } catch (error) {
-        console.error('Error fetching legal memo:', error);
-        toast({
-          title: "Error loading memo",
-          description: "Failed to load the legal memo data",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchLegalMemo();
-  }, [analysis.id, toast]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading legal memo...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!legalMemo) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="p-6 max-w-md">
-          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <p className="text-center text-muted-foreground">No legal memo data found</p>
-          <Button onClick={onNewAnalysis} className="w-full mt-4">New Analysis</Button>
-        </Card>
-      </div>
-    );
-  }
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "high":
+        return "destructive";
+      case "moderate":
+        return "warning";
+      default:
+        return "secondary";
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -83,214 +39,142 @@ const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
         </Button>
       </div>
 
-      {/* Client Information */}
+      {/* Innocence Claims */}
       <Card className="p-6 border-border shadow-md">
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-4 mb-4">
           <div className="p-2 rounded-lg bg-primary/10">
-            <FileText className="w-6 h-6 text-primary" />
+            <AlertCircle className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-bold text-foreground mb-4">Client Information</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {legalMemo.client_name && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Client Name</p>
-                  <p className="text-sm font-semibold">{legalMemo.client_name}</p>
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              Innocence Claims Detected
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Found {analysis.innocenceClaims.count} explicit or implicit claims of innocence
+            </p>
+            <div className="space-y-3">
+              {analysis.innocenceClaims.examples.map((claim: string, idx: number) => (
+                <div key={idx} className="p-4 bg-muted rounded-lg border-l-4 border-primary">
+                  <p className="text-sm text-foreground italic">"{claim}"</p>
                 </div>
-              )}
-              {legalMemo.cdcr_number && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">CDCR Number</p>
-                  <p className="text-sm font-mono">{legalMemo.cdcr_number}</p>
-                </div>
-              )}
-              {legalMemo.date_of_birth && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Date of Birth</p>
-                  <p className="text-sm">{legalMemo.date_of_birth}</p>
-                </div>
-              )}
-              {legalMemo.contact_information && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Contact</p>
-                  <p className="text-sm">{legalMemo.contact_information}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Introduction */}
-      <Card className="p-6 border-border shadow-md">
-        <h3 className="text-xl font-bold mb-4">Introduction</h3>
-        
-        {legalMemo.short_summary && (
-          <div className="mb-4">
-            <h4 className="font-semibold mb-2">Short Summary</h4>
-            <p className="text-muted-foreground">{legalMemo.short_summary}</p>
-          </div>
-        )}
-        
-        {legalMemo.evidence_used_to_convict?.length > 0 && (
-          <div className="mb-4">
-            <h4 className="font-semibold mb-2">Evidence Used to Convict</h4>
-            <ul className="list-decimal list-inside space-y-1">
-              {legalMemo.evidence_used_to_convict.map((evidence: string, idx: number) => (
-                <li key={idx} className="text-sm text-muted-foreground">{evidence}</li>
               ))}
-            </ul>
+            </div>
           </div>
-        )}
-        
-        {legalMemo.potential_theory_of_case && (
-          <div>
-            <h4 className="font-semibold mb-2">Potential Theory of the Case</h4>
-            <p className="text-muted-foreground">{legalMemo.potential_theory_of_case}</p>
-          </div>
-        )}
-      </Card>
-
-      {/* Conviction & Sentence Summary */}
-      <Card className="p-6 border-border shadow-md">
-        <h3 className="text-xl font-bold mb-4">Conviction & Sentence Summary</h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          {legalMemo.date_of_crime && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Date of Crime</p>
-              <p className="text-sm">{legalMemo.date_of_crime}</p>
-            </div>
-          )}
-          {legalMemo.location_of_crime && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Location</p>
-              <p className="text-sm">{legalMemo.location_of_crime}</p>
-            </div>
-          )}
-          {legalMemo.date_of_arrest && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Date of Arrest</p>
-              <p className="text-sm">{legalMemo.date_of_arrest}</p>
-            </div>
-          )}
-          {legalMemo.date_of_conviction && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Date of Conviction</p>
-              <p className="text-sm">{legalMemo.date_of_conviction}</p>
-            </div>
-          )}
-          {legalMemo.convicted_of && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Convicted Of</p>
-              <p className="text-sm">{legalMemo.convicted_of}</p>
-            </div>
-          )}
-          {legalMemo.county_of_conviction && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">County</p>
-              <p className="text-sm">{legalMemo.county_of_conviction}</p>
-            </div>
-          )}
-          {legalMemo.sentence && (
-            <div className="p-3 bg-muted rounded-lg col-span-full">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Sentence</p>
-              <p className="text-sm">{legalMemo.sentence}</p>
-            </div>
-          )}
         </div>
       </Card>
 
-      {/* Court Information */}
+      {/* Bias Indicators */}
       <Card className="p-6 border-border shadow-md">
-        <h3 className="text-xl font-bold mb-4">Court Information</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {legalMemo.trial_court_case_no && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Case Number</p>
-              <p className="text-sm font-mono">{legalMemo.trial_court_case_no}</p>
+        <div className="flex items-start gap-4 mb-4">
+          <div className="p-2 rounded-lg bg-accent/10">
+            <BarChart3 className="w-6 h-6 text-accent" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              Bias & Fairness Indicators
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Analysis of potentially problematic language patterns
+            </p>
+            <div className="space-y-4">
+              {analysis.biasIndicators.categories.map((category: any, idx: number) => (
+                <div key={idx} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-foreground">{category.type}</span>
+                      <Badge variant={getSeverityColor(category.severity)}>
+                        {category.severity}
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {category.count} occurrences
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(category.count / 15) * 100} 
+                    className="h-2"
+                  />
+                </div>
+              ))}
             </div>
-          )}
-          {legalMemo.trial_attorney && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Defense Attorney</p>
-              <p className="text-sm">{legalMemo.trial_attorney}</p>
-            </div>
-          )}
-          {legalMemo.prosecuting_attorney && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Prosecutor</p>
-              <p className="text-sm">{legalMemo.prosecuting_attorney}</p>
-            </div>
-          )}
+          </div>
         </div>
       </Card>
 
-      {/* Prosecution & Defense */}
-      {(legalMemo.prosecution_presented || legalMemo.defense_presented) && (
-        <Card className="p-6 border-border shadow-md">
-          <h3 className="text-xl font-bold mb-4">Case Presentations</h3>
-          {legalMemo.prosecution_presented && (
-            <div className="mb-4">
-              <h4 className="font-semibold mb-2">Prosecution Presented</h4>
-              <p className="text-muted-foreground">{legalMemo.prosecution_presented}</p>
-            </div>
-          )}
-          {legalMemo.defense_presented && (
-            <div>
-              <h4 className="font-semibold mb-2">Defense Presented</h4>
-              <p className="text-muted-foreground">{legalMemo.defense_presented}</p>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Wrongful Conviction Issues */}
-      {legalMemo.wrongful_conviction_issues?.length > 0 && (
-        <Card className="p-6 border-border shadow-md">
-          <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-destructive/10">
-              <AlertCircle className="w-6 h-6 text-destructive" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold mb-4">Wrongful Conviction Issues Identified</h3>
-              <div className="grid md:grid-cols-2 gap-2">
-                {legalMemo.wrongful_conviction_issues.map((issue: string, idx: number) => (
-                  <Badge key={idx} variant="outline" className="justify-start">
-                    {issue}
-                  </Badge>
-                ))}
+      {/* Summary & Key Facts */}
+      <Card className="p-6 border-border shadow-md">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="p-2 rounded-lg bg-success/10">
+            <FileText className="w-6 h-6 text-success" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              Advocate Fact Sheet
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Key information extracted from the hearing
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase mb-1">Offense Context</p>
+                <p className="text-sm text-foreground">{analysis.summary.offenseContext}</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase mb-1">Years Served</p>
+                <p className="text-sm text-foreground">{analysis.summary.yearsServed} years</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase mb-1">Programming</p>
+                <p className="text-sm text-foreground">{analysis.summary.programming}</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground uppercase mb-1">Parole Factors</p>
+                <p className="text-sm text-foreground">{analysis.summary.paroleFactors}</p>
               </div>
             </div>
           </div>
-        </Card>
-      )}
+        </div>
+      </Card>
 
-      {/* Innocence Claims */}
-      {legalMemo.innocence_claims && (
-        <Card className="p-6 border-border shadow-md">
-          <h3 className="text-xl font-bold mb-4">Innocence Claims</h3>
-          <div className="mb-4">
-            <p className="text-muted-foreground mb-2">
-              {legalMemo.innocence_claims.detected 
-                ? `Found ${legalMemo.innocence_claims.count} innocence claim(s)`
-                : "No innocence claims detected"
-              }
-            </p>
-            {legalMemo.innocence_claims.analysis && (
-              <p className="text-sm text-muted-foreground mb-4">{legalMemo.innocence_claims.analysis}</p>
-            )}
+      {/* Language Analysis */}
+      <Card className="p-6 border-border shadow-md">
+        <div className="flex items-start gap-4 mb-4">
+          <div className="p-2 rounded-lg bg-warning/10">
+            <Brain className="w-6 h-6 text-warning" />
           </div>
-          {legalMemo.innocence_claims.examples?.length > 0 && (
-            <div className="space-y-2">
-              {legalMemo.innocence_claims.examples.map((claim: string, idx: number) => (
-                <div key={idx} className="p-4 bg-muted rounded-lg border-l-4 border-primary">
-                  <p className="text-sm italic">"{claim}"</p>
-                </div>
-              ))}
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              Language Pattern Analysis
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Frequency and context of key terms used by the board
+            </p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <p className="text-2xl font-bold text-primary mb-1">
+                  {analysis.languageAnalysis.insight.frequency}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">"Insight" mentions</p>
+                <Badge variant="secondary">{analysis.languageAnalysis.insight.context} usage</Badge>
+              </div>
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <p className="text-2xl font-bold text-accent mb-1">
+                  {analysis.languageAnalysis.remorse.frequency}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">"Remorse" mentions</p>
+                <Badge variant="secondary">{analysis.languageAnalysis.remorse.context} usage</Badge>
+              </div>
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <p className="text-2xl font-bold text-success mb-1">
+                  {analysis.languageAnalysis.accountability.frequency}
+                </p>
+                <p className="text-sm text-muted-foreground mb-2">"Accountability" mentions</p>
+                <Badge variant="secondary">{analysis.languageAnalysis.accountability.context} usage</Badge>
+              </div>
             </div>
-          )}
-        </Card>
-      )}
+          </div>
+        </div>
+      </Card>
     </div>
   );
 };
