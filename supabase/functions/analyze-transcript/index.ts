@@ -41,11 +41,9 @@ serve(async (req) => {
       .update({ status: 'processing' })
       .eq('id', analysisId);
 
-    // Extract comprehensive legal memo information
-    console.log('Extracting legal memo information...');
+    // Generate comprehensive legal memo based on template structure
+    console.log("Generating legal memo analysis...");
     
-    const memoPrompt = `Analyze this parole hearing transcript and extract ALL available information for a legal memo. Extract as much detail as possible from the transcript.`;
-
     const memoResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -55,113 +53,107 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are a legal analyst expert. Extract ALL available information from the transcript. Use "Not mentioned" for fields not found in the transcript. You MUST use the provided function to return structured data.' },
-          { role: 'user', content: `${memoPrompt}\n\nTranscript:\n${transcriptText}` }
+          {
+            role: 'system',
+            content: 'You are an expert legal analyst creating confidential interoffice memos for The Innocence Center. Extract all relevant information from parole transcripts to complete a structured legal memo template.'
+          },
+          {
+            role: 'user',
+            content: `Analyze this parole hearing transcript and extract information to complete a comprehensive legal memo following The Innocence Center template structure.
+
+Extract and structure the following information:
+
+1. CLIENT INFORMATION: Name, CDCR number, date of birth if mentioned
+2. SHORT SUMMARY: 3-4 sentences about how they got convicted, their defense, and summarize innocence statements made
+3. EVIDENCE USED TO CONVICT: List all evidence mentioned (testimony, physical evidence, eyewitness accounts, etc.)
+4. POTENTIAL THEORY OF THE CASE: What might have gone wrong (mistaken ID, alibi defense, someone else did it, etc.)
+5. CONVICTION & SENTENCE SUMMARY: Crime date/location, arrest date, conviction date, what they were convicted of, county, sentence, parole eligibility
+6. COURT INFORMATION: Trial court case number, judge, trial attorney, prosecutor, co-defendants if mentioned
+7. PROSECUTION PRESENTED: What the prosecution's case was based on
+8. DEFENSE PRESENTED: What the defense argued
+9. WRONGFUL CONVICTION ISSUES: Identify any of these issues present: eyewitness identifications, confessions, bite mark evidence, ballistics, hair comparison, fingerprints, DNA, blood spatter, gang evidence, testimony of children, psychological evaluations, etc.
+10. INNOCENCE CLAIMS: Count and extract specific quotes where innocence is claimed with context
+
+Transcript:
+${transcriptText.substring(0, 50000)}`
+          }
         ],
         tools: [{
           type: "function",
           function: {
-            name: "extract_legal_memo",
-            description: "Extract comprehensive legal memo information from parole transcript",
+            name: "generate_legal_memo",
+            description: "Generate structured legal memo from transcript",
             parameters: {
               type: "object",
               properties: {
-                client_name: { type: "string", description: "Client's full name" },
-                cdcr_number: { type: "string", description: "CDCR number if mentioned" },
-                contact_information: { type: "string", description: "Contact information if mentioned" },
-                date_of_birth: { type: "string", description: "Date of birth if mentioned" },
-                short_summary: { type: "string", description: "3-4 sentences reflecting how they got convicted, their defense, and innocence statements" },
-                evidence_used_to_convict: { 
-                  type: "array", 
-                  items: { type: "string" },
-                  description: "List of evidence items used to convict"
-                },
-                potential_theory_of_case: { type: "string", description: "Theory of what could have gone wrong (mistaken ID, alibi, etc.)" },
-                date_of_crime: { type: "string" },
-                location_of_crime: { type: "string" },
-                date_of_arrest: { type: "string" },
-                date_of_conviction: { type: "string" },
-                convicted_of: { type: "string", description: "Charges/crimes convicted of" },
-                county_of_conviction: { type: "string" },
-                sentence: { type: "string", description: "Sentence details" },
-                parole_eligibility_date: { type: "string" },
-                prior_parole_hearing_result: { type: "string" },
-                client_priors: { type: "string", description: "Prior convictions/criminal history" },
-                trial_court_case_no: { type: "string" },
-                trial_court_judge_dept: { type: "string", description: "Trial court, judge, and department" },
-                trial_attorney: { type: "string" },
-                prosecuting_attorney: { type: "string" },
-                co_defendant: { type: "string" },
-                co_defendant_attorney: { type: "string" },
-                appellate_case_no: { type: "string" },
-                appellate_attorneys: { type: "string" },
-                direct_appeal_date: { type: "string" },
-                direct_appeal_issues: { 
-                  type: "array", 
-                  items: { type: "string" },
-                  description: "Issues raised in direct appeal"
-                },
-                petition_for_review_date: { type: "string" },
-                petition_for_review_issues: { 
-                  type: "array", 
-                  items: { type: "string" }
-                },
-                habeas_petition_date: { type: "string" },
-                habeas_petition_issues: { 
-                  type: "array", 
-                  items: { type: "string" }
-                },
-                prosecution_presented: { type: "string", description: "Summary of prosecution's case presentation" },
-                defense_presented: { type: "string", description: "Summary of defense's case presentation" },
-                wrongful_conviction_issues: {
-                  type: "array",
-                  items: { 
-                    type: "string",
-                    enum: [
-                      "Eyewitness identifications",
-                      "Shaken Baby Syndrome Theory",
-                      "Confessions",
-                      "Abusive Head Trauma Theory",
-                      "Bite mark evidence",
-                      "Ballistics analysis",
-                      "Hair comparison analysis",
-                      "Shoe print analysis",
-                      "Fingerprint analysis",
-                      "GPS/Cell Phone Tower Data",
-                      "Arson/explosives testimony",
-                      "Fiber comparison",
-                      "Tool mark analysis",
-                      "Gang evidence",
-                      "Tire track analysis",
-                      "Blood Spatter",
-                      "DNA",
-                      "Testimony of Children",
-                      "Psychological Evaluations",
-                      "Scent Detection Dogs"
-                    ]
-                  },
-                  description: "List of wrongful conviction issues present in the case"
-                },
-                innocence_claims: {
+                clientInfo: {
                   type: "object",
                   properties: {
-                    detected: { type: "boolean" },
-                    count: { type: "number" },
-                    examples: { type: "array", items: { type: "string" } },
-                    analysis: { type: "string" }
+                    name: { type: "string" },
+                    cdcrNumber: { type: "string" },
+                    dateOfBirth: { type: "string" }
                   }
+                },
+                shortSummary: { type: "string" },
+                evidenceUsedToConvict: {
+                  type: "array",
+                  items: { type: "string" }
+                },
+                potentialTheory: { type: "string" },
+                convictionSummary: {
+                  type: "object",
+                  properties: {
+                    dateOfCrime: { type: "string" },
+                    locationOfCrime: { type: "string" },
+                    dateOfArrest: { type: "string" },
+                    dateOfConviction: { type: "string" },
+                    convictedOf: { type: "string" },
+                    county: { type: "string" },
+                    sentence: { type: "string" },
+                    paroleEligibility: { type: "string" }
+                  }
+                },
+                courtInfo: {
+                  type: "object",
+                  properties: {
+                    trialCaseNo: { type: "string" },
+                    trialJudge: { type: "string" },
+                    trialAttorney: { type: "string" },
+                    prosecutor: { type: "string" },
+                    coDefendant: { type: "string" }
+                  }
+                },
+                prosecutionPresented: { type: "string" },
+                defensePresented: { type: "string" },
+                wrongfulConvictionIssues: {
+                  type: "array",
+                  items: { type: "string" }
+                },
+                innocenceClaims: {
+                  type: "object",
+                  properties: {
+                    count: { type: "number" },
+                    claims: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          quote: { type: "string" },
+                          context: { type: "string" }
+                        },
+                        required: ["quote", "context"]
+                      }
+                    }
+                  },
+                  required: ["count", "claims"]
                 }
               },
-              required: [
-                "client_name", "short_summary", "evidence_used_to_convict", 
-                "potential_theory_of_case", "prosecution_presented", 
-                "defense_presented", "wrongful_conviction_issues", "innocence_claims"
-              ]
+              required: ["shortSummary", "evidenceUsedToConvict"]
             }
           }
         }],
-        tool_choice: { type: "function", function: { name: "extract_legal_memo" } }
-      }),
+        tool_choice: { type: "function", function: { name: "generate_legal_memo" } }
+      })
     });
 
     if (memoResponse.status === 429) {
@@ -178,30 +170,17 @@ serve(async (req) => {
     const toolCall = memoData.choices[0].message.tool_calls?.[0];
     
     if (!toolCall?.function?.arguments) {
-      throw new Error("AI did not return structured memo data");
+      throw new Error("AI did not return structured analysis");
     }
 
-    const legalMemo = JSON.parse(toolCall.function.arguments);
+    const results = JSON.parse(toolCall.function.arguments);
 
-    // Store legal memo in database
-    const { error: memoInsertError } = await supabase
-      .from('legal_memos')
-      .insert({
-        analysis_id: analysisId,
-        ...legalMemo
-      });
-
-    if (memoInsertError) {
-      console.error('Error inserting legal memo:', memoInsertError);
-      throw memoInsertError;
-    }
-
-    // Update analysis with completion status
-    const { error: updateError } = await supabase
+        // Update analysis with results
+        const { error: updateError } = await supabase
       .from('analyses')
       .update({
         status: 'completed',
-        results: { memo_extracted: true }
+        results: results
       })
       .eq('id', analysisId);
 
@@ -209,10 +188,10 @@ serve(async (req) => {
       throw updateError;
     }
 
-    console.log('Legal memo extraction completed successfully');
+    console.log('Analysis completed successfully');
 
     return new Response(
-      JSON.stringify({ success: true, legalMemo }),
+      JSON.stringify({ success: true, results }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
