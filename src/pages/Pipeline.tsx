@@ -7,13 +7,7 @@ import { LogOut, Upload, LayoutDashboard, Users, ArrowDownUp, CheckSquare, Trash
 import { NotificationBell } from "@/components/NotificationBell";
 import { BulkDeleteDialog } from "@/components/BulkDeleteDialog";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Pipeline() {
   const navigate = useNavigate();
@@ -61,23 +55,20 @@ export default function Pipeline() {
 
   const handleBulkDelete = async () => {
     const idsToDelete = Array.from(selectedCases);
-    
+
     try {
-      const { error } = await supabase
-        .from("analyses")
-        .delete()
-        .in("id", idsToDelete);
+      const { error } = await supabase.from("analyses").delete().in("id", idsToDelete);
 
       if (error) throw error;
 
       toast({
         title: "Cases deleted",
-        description: `Successfully deleted ${idsToDelete.length} case${idsToDelete.length > 1 ? 's' : ''}`,
+        description: `Successfully deleted ${idsToDelete.length} case${idsToDelete.length > 1 ? "s" : ""}`,
       });
 
       setSelectedCases(new Set());
       setSelectionMode(false);
-      
+
       // Trigger refresh by re-mounting KanbanBoard
       window.location.reload();
     } catch (error) {
@@ -98,14 +89,16 @@ export default function Pipeline() {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold">JusticeLens</h1>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  New Case
-                </Button>
                 <Button variant="ghost" size="sm">
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Pipeline
                 </Button>
+
+                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  New Case
+                </Button>
+
                 <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
                   <Users className="w-4 h-4 mr-2" />
                   Team
@@ -129,19 +122,12 @@ export default function Pipeline() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold mb-2">Case Pipeline</h2>
-              <p className="text-sm text-muted-foreground">
-                View and manage cases across different stages
-              </p>
+              <p className="text-sm text-muted-foreground">View and manage cases across different stages</p>
             </div>
             <div className="flex items-center gap-2">
               {!selectionMode ? (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleSelectionMode}
-                    className="gap-2"
-                  >
+                  <Button variant="outline" size="sm" onClick={toggleSelectionMode} className="gap-2">
                     <CheckSquare className="w-4 h-4" />
                     Select Cases
                   </Button>
@@ -159,9 +145,7 @@ export default function Pipeline() {
                 </>
               ) : (
                 <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
-                  <span className="text-sm font-medium">
-                    {selectedCases.size} selected
-                  </span>
+                  <span className="text-sm font-medium">{selectedCases.size} selected</span>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -172,12 +156,7 @@ export default function Pipeline() {
                     <Trash2 className="w-4 h-4" />
                     Delete Selected
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleSelectionMode}
-                    className="gap-2"
-                  >
+                  <Button variant="ghost" size="sm" onClick={toggleSelectionMode} className="gap-2">
                     <X className="w-4 h-4" />
                     Cancel
                   </Button>
@@ -186,8 +165,8 @@ export default function Pipeline() {
             </div>
           </div>
         </div>
-        <KanbanBoard 
-          sortBy={sortBy} 
+        <KanbanBoard
+          sortBy={sortBy}
           selectionMode={selectionMode}
           selectedCases={selectedCases}
           onCaseSelect={handleCaseSelect}
