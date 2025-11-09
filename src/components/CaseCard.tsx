@@ -44,16 +44,22 @@ export const CaseCard = ({
   const navigate = useNavigate();
   
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
+    switch (priority.toLowerCase()) {
       case "urgent":
         return "destructive";
       case "high":
         return "default";
       case "medium":
         return "secondary";
+      case "low":
+        return "outline";
       default:
         return "outline";
     }
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    return priority.charAt(0).toUpperCase() + priority.slice(1);
   };
 
   const handleExpand = (e: React.MouseEvent) => {
@@ -110,11 +116,9 @@ export const CaseCard = ({
                   </p>
                 )}
               </div>
-              {caseItem.priority !== "medium" && (
-                <Badge variant={getPriorityColor(caseItem.priority)} className="text-xs">
-                  {caseItem.priority}
-                </Badge>
-              )}
+              <Badge variant={getPriorityColor(caseItem.priority)} className="text-xs shrink-0">
+                {getPriorityLabel(caseItem.priority)}
+              </Badge>
             </div>
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -210,7 +214,7 @@ export const CaseCard = ({
               <span>{formatDistanceToNow(new Date(caseItem.created_at), { addSuffix: true })}</span>
             </div>
             <Badge variant={getPriorityColor(caseItem.priority)} className="text-xs">
-              {caseItem.priority}
+              {getPriorityLabel(caseItem.priority)}
             </Badge>
           </div>
         </div>
