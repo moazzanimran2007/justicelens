@@ -7,12 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   FileText, 
-  Plus, 
-  Users, 
   AlertCircle, 
-  CheckCircle, 
   Clock,
-  TrendingUp,
   Activity
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -281,30 +277,6 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
-
-        {/* Quick Actions */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-4">
-            <Button onClick={() => navigate("/new-case")} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Case
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
-              <FileText className="h-4 w-4" />
-              View Pipeline
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/team")} className="gap-2">
-              <Users className="h-4 w-4" />
-              Manage Team
-            </Button>
-          </CardContent>
-        </Card>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Recent Cases */}
