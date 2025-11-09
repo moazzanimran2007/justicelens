@@ -8,24 +8,25 @@ import { BulkDeleteDialog } from "@/components/BulkDeleteDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Header } from "@/components/Header";
-
 export default function Pipeline() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [user, setUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-
   useEffect(() => {
     checkAuth();
   }, []);
-
   const checkAuth = async () => {
     const {
-      data: { user },
+      data: {
+        user
+      }
     } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
@@ -33,12 +34,10 @@ export default function Pipeline() {
       setUser(user);
     }
   };
-
   const toggleSelectionMode = () => {
     setSelectionMode(!selectionMode);
     setSelectedCases(new Set());
   };
-
   const handleCaseSelect = (caseId: string, selected: boolean) => {
     const newSelected = new Set(selectedCases);
     if (selected) {
@@ -48,20 +47,17 @@ export default function Pipeline() {
     }
     setSelectedCases(newSelected);
   };
-
   const handleBulkDelete = async () => {
     const idsToDelete = Array.from(selectedCases);
-
     try {
-      const { error } = await supabase.from("analyses").delete().in("id", idsToDelete);
-
+      const {
+        error
+      } = await supabase.from("analyses").delete().in("id", idsToDelete);
       if (error) throw error;
-
       toast({
         title: "Cases deleted",
-        description: `Successfully deleted ${idsToDelete.length} case${idsToDelete.length > 1 ? "s" : ""}`,
+        description: `Successfully deleted ${idsToDelete.length} case${idsToDelete.length > 1 ? "s" : ""}`
       });
-
       setSelectedCases(new Set());
       setSelectionMode(false);
 
@@ -72,13 +68,11 @@ export default function Pipeline() {
       toast({
         title: "Error",
         description: "Failed to delete cases. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
       {/* Hero Section */}
@@ -88,7 +82,9 @@ export default function Pipeline() {
             <h1 className="text-4xl font-bold text-foreground mb-3 animate-fade-in">
               Welcome back, {user?.email.split("@")[0]}!
             </h1>
-            <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            <p className="text-lg text-muted-foreground animate-fade-in" style={{
+            animationDelay: "0.1s"
+          }}>
               Manage your case pipeline and track progress across all stages
             </p>
           </div>
@@ -105,13 +101,12 @@ export default function Pipeline() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-foreground">Case Pipeline</h2>
-                <p className="text-sm text-muted-foreground">Drag cases between stages or use controls</p>
+                <p className="text-sm text-muted-foreground">Preview all tasks, click to expand</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {!selectionMode ? (
-                <>
+              {!selectionMode ? <>
                   <Button variant="outline" size="default" onClick={toggleSelectionMode} className="gap-2 hover-scale">
                     <CheckSquare className="w-4 h-4" />
                     Select Cases
@@ -143,19 +138,11 @@ export default function Pipeline() {
                       </SelectContent>
                     </Select>
                   </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-3 bg-primary/10 px-6 py-3 rounded-lg border border-primary/20 animate-scale-in">
+                </> : <div className="flex items-center gap-3 bg-primary/10 px-6 py-3 rounded-lg border border-primary/20 animate-scale-in">
                   <span className="text-sm font-semibold text-foreground">
                     {selectedCases.size} case{selectedCases.size !== 1 ? "s" : ""} selected
                   </span>
-                  <Button
-                    variant="destructive"
-                    size="default"
-                    onClick={() => setShowDeleteDialog(true)}
-                    disabled={selectedCases.size === 0}
-                    className="gap-2"
-                  >
+                  <Button variant="destructive" size="default" onClick={() => setShowDeleteDialog(true)} disabled={selectedCases.size === 0} className="gap-2">
                     <Trash2 className="w-4 h-4" />
                     Delete Selected
                   </Button>
@@ -163,31 +150,19 @@ export default function Pipeline() {
                     <X className="w-4 h-4" />
                     Cancel
                   </Button>
-                </div>
-              )}
+                </div>}
             </div>
           </div>
         </div>
 
         {/* Kanban Board Section */}
-        <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          <KanbanBoard
-            sortBy={sortBy}
-            assigneeFilter={assigneeFilter}
-            currentUserId={user?.id}
-            selectionMode={selectionMode}
-            selectedCases={selectedCases}
-            onCaseSelect={handleCaseSelect}
-          />
+        <div className="animate-fade-in" style={{
+        animationDelay: "0.2s"
+      }}>
+          <KanbanBoard sortBy={sortBy} assigneeFilter={assigneeFilter} currentUserId={user?.id} selectionMode={selectionMode} selectedCases={selectedCases} onCaseSelect={handleCaseSelect} />
         </div>
       </main>
 
-      <BulkDeleteDialog
-        open={showDeleteDialog}
-        onOpenChange={setShowDeleteDialog}
-        onConfirm={handleBulkDelete}
-        count={selectedCases.size}
-      />
-    </div>
-  );
+      <BulkDeleteDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} onConfirm={handleBulkDelete} count={selectedCases.size} />
+    </div>;
 }
