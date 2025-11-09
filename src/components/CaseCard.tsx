@@ -9,6 +9,7 @@ import {
 import { Clock, User, AlertCircle, ExternalLink, FileText } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import InnocenceScoreCard from "./InnocenceScoreCard";
 
 interface CaseCardProps {
   caseItem: {
@@ -121,6 +122,17 @@ export const CaseCard = ({ caseItem, onClick }: CaseCardProps) => {
 
           {summary ? (
             <div className="space-y-3">
+              {/* Innocence Score */}
+              {caseItem.results && (
+                <div className="p-3 bg-muted/50 rounded-lg border">
+                  <InnocenceScoreCard 
+                    analysis={caseItem.results} 
+                    legalMemo={caseItem.results.legalMemo}
+                    compact={true}
+                  />
+                </div>
+              )}
+              
               {convicted && (
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Convicted Of</label>

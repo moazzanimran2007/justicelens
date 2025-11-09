@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LegalMemoDisplay from "./LegalMemoDisplay";
+import InnocenceScoreCard from "./InnocenceScoreCard";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -131,6 +132,9 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
           </Button>
         </div>
       </div>
+
+      {/* Innocence Likelihood Score */}
+      <InnocenceScoreCard analysis={analysis} legalMemo={legalMemo} />
 
       {/* Innocence Claims */}
       {analysis.innocenceClaims && (
