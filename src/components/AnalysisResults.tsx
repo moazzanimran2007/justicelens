@@ -177,9 +177,25 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6">
                 <div className="space-y-3">
-                  {analysis.innocenceClaims.examples?.map((claim: string, idx: number) => (
+                  {analysis.innocenceClaims.examples?.map((claim: any, idx: number) => (
                     <div key={idx} className="p-4 bg-muted rounded-lg border-l-4 border-primary">
-                      <p className="text-sm text-foreground italic">"{claim}"</p>
+                      {typeof claim === 'string' ? (
+                        <p className="text-sm text-foreground italic">"{claim}"</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm text-foreground italic flex-1">"{claim.quote}"</p>
+                            {claim.page && (
+                              <Badge variant="secondary" className="text-xs shrink-0">
+                                {claim.page}
+                              </Badge>
+                            )}
+                          </div>
+                          {claim.context && (
+                            <p className="text-xs text-muted-foreground mt-2">{claim.context}</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

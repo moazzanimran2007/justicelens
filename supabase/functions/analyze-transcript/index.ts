@@ -97,7 +97,7 @@ serve(async (req) => {
     // Innocence Claims Detector
     if (modules.includes('innocence')) {
       console.log('Analyzing innocence claims...');
-      const innocencePrompt = `Analyze the following parole hearing transcript and identify ALL explicit or implicit innocence claims.`;
+      const innocencePrompt = `Analyze the following parole hearing transcript and identify ALL explicit or implicit innocence claims. For each claim, try to identify the approximate page number or section where it appears in the transcript.`;
 
       const innocenceResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -115,7 +115,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "analyze_innocence_claims",
-              description: "Analyze transcript for innocence claims",
+              description: "Analyze transcript for innocence claims with location information",
               parameters: {
                 type: "object",
                 properties: {
@@ -123,8 +123,16 @@ serve(async (req) => {
                   count: { type: "number", description: "Number of innocence claims detected" },
                   examples: { 
                     type: "array", 
-                    items: { type: "string" },
-                    description: "Direct quotes of innocence claims from the transcript"
+                    items: {
+                      type: "object",
+                      properties: {
+                        quote: { type: "string", description: "Direct quote of the innocence claim" },
+                        page: { type: "string", description: "Page number or section reference (e.g., 'Page 5', 'Beginning', 'Middle')" },
+                        context: { type: "string", description: "Brief context about the claim" }
+                      },
+                      required: ["quote", "page"]
+                    },
+                    description: "Innocence claims with their locations in the transcript"
                   },
                   analysis: { type: "string", description: "Brief explanation of patterns found" }
                 },
