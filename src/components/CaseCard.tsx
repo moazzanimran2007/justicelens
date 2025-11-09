@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   HoverCard,
   HoverCardContent,
@@ -24,9 +25,18 @@ interface CaseCardProps {
     results?: any;
   };
   onClick: () => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
 }
 
-export const CaseCard = ({ caseItem, onClick }: CaseCardProps) => {
+export const CaseCard = ({ 
+  caseItem, 
+  onClick, 
+  selectionMode = false,
+  isSelected = false,
+  onSelect 
+}: CaseCardProps) => {
   const navigate = useNavigate();
   
   const getPriorityColor = (priority: string) => {
@@ -47,19 +57,43 @@ export const CaseCard = ({ caseItem, onClick }: CaseCardProps) => {
     navigate(`/case/${caseItem.id}`);
   };
 
+  const handleCheckboxChange = (checked: boolean) => {
+    onSelect?.(checked);
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (selectionMode) {
+      e.preventDefault();
+      e.stopPropagation();
+      onSelect?.(!isSelected);
+    } else {
+      onClick();
+    }
+  };
+
   const summary = caseItem.results?.legalMemo?.short_summary;
   const convicted = caseItem.results?.legalMemo?.convicted_of;
   const sentence = caseItem.results?.legalMemo?.sentence;
 
   return (
-    <HoverCard openDelay={300}>
+    <HoverCard openDelay={300} open={selectionMode ? false : undefined}>
       <HoverCardTrigger asChild>
         <Card
-          onClick={onClick}
-          className="p-3 cursor-pointer hover:shadow-md transition-shadow bg-card"
+          onClick={handleCardClick}
+          className={`p-3 cursor-pointer hover:shadow-md transition-all bg-card ${
+            isSelected ? 'ring-2 ring-primary bg-primary/5' : ''
+          }`}
         >
           <div className="space-y-2">
             <div className="flex items-start justify-between gap-2">
+              {selectionMode && (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={handleCheckboxChange}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1"
+                />
+              )}
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm truncate">
                   {caseItem.client_name || caseItem.file_name}

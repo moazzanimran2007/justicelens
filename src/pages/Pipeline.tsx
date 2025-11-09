@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { LogOut, Upload, LayoutDashboard, Users, ArrowDownUp } from "lucide-react";
+import { LogOut, Upload, LayoutDashboard, Users, ArrowDownUp, CheckSquare, Trash2, X } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { BulkDeleteDialog } from "@/components/BulkDeleteDialog";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -15,8 +17,12 @@ import {
 
 export default function Pipeline() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<string>("created_at");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -36,6 +42,52 @@ export default function Pipeline() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedCases(new Set());
+  };
+
+  const handleCaseSelect = (caseId: string, selected: boolean) => {
+    const newSelected = new Set(selectedCases);
+    if (selected) {
+      newSelected.add(caseId);
+    } else {
+      newSelected.delete(caseId);
+    }
+    setSelectedCases(newSelected);
+  };
+
+  const handleBulkDelete = async () => {
+    const idsToDelete = Array.from(selectedCases);
+    
+    try {
+      const { error } = await supabase
+        .from("analyses")
+        .delete()
+        .in("id", idsToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Cases deleted",
+        description: `Successfully deleted ${idsToDelete.length} case${idsToDelete.length > 1 ? 's' : ''}`,
+      });
+
+      setSelectedCases(new Set());
+      setSelectionMode(false);
+      
+      // Trigger refresh by re-mounting KanbanBoard
+      window.location.reload();
+    } catch (error) {
+      console.error("Error deleting cases:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete cases. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -82,22 +134,72 @@ export default function Pipeline() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Sort by..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="created_at">Newest First</SelectItem>
-                  <SelectItem value="innocence_score">Innocence Score</SelectItem>
-                  <SelectItem value="priority">Priority</SelectItem>
-                </SelectContent>
-              </Select>
+              {!selectionMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleSelectionMode}
+                    className="gap-2"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    Select Cases
+                  </Button>
+                  <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card z-50">
+                      <SelectItem value="created_at">Newest First</SelectItem>
+                      <SelectItem value="innocence_score">Innocence Score</SelectItem>
+                      <SelectItem value="priority">Priority</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
+                  <span className="text-sm font-medium">
+                    {selectedCases.size} selected
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    disabled={selectedCases.size === 0}
+                    className="gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Selected
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSelectionMode}
+                    className="gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
-        <KanbanBoard sortBy={sortBy} />
+        <KanbanBoard 
+          sortBy={sortBy} 
+          selectionMode={selectionMode}
+          selectedCases={selectedCases}
+          onCaseSelect={handleCaseSelect}
+        />
       </main>
+
+      <BulkDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onConfirm={handleBulkDelete}
+        count={selectedCases.size}
+      />
     </div>
   );
 }

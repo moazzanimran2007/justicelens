@@ -29,9 +29,17 @@ interface Case {
 
 interface KanbanBoardProps {
   sortBy?: string;
+  selectionMode?: boolean;
+  selectedCases?: Set<string>;
+  onCaseSelect?: (caseId: string, selected: boolean) => void;
 }
 
-export const KanbanBoard = ({ sortBy = "created_at" }: KanbanBoardProps) => {
+export const KanbanBoard = ({ 
+  sortBy = "created_at",
+  selectionMode = false,
+  selectedCases = new Set(),
+  onCaseSelect
+}: KanbanBoardProps) => {
   const navigate = useNavigate();
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
@@ -127,7 +135,14 @@ export const KanbanBoard = ({ sortBy = "created_at" }: KanbanBoardProps) => {
                 <CaseCard
                   key={caseItem.id}
                   caseItem={caseItem}
-                  onClick={() => navigate(`/case/${caseItem.id}`)}
+                  onClick={() => {
+                    if (!selectionMode) {
+                      navigate(`/case/${caseItem.id}`);
+                    }
+                  }}
+                  selectionMode={selectionMode}
+                  isSelected={selectedCases.has(caseItem.id)}
+                  onSelect={(selected) => onCaseSelect?.(caseItem.id, selected)}
                 />
               ))}
             </div>
