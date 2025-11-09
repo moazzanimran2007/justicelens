@@ -334,6 +334,13 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in analyze-transcript function:', error);
     
+    // Determine proper HTTP status for the client
+    let statusCode = 500;
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const lower = typeof message === 'string' ? message.toLowerCase() : '';
+    if (lower.includes('rate limit')) statusCode = 429;
+    else if (lower.includes('credit') || lower.includes('payment')) statusCode = 402;
+    
     // Update the analysis status to failed if we have the analysisId
     if (analysisId) {
       try {
@@ -345,7 +352,7 @@ serve(async (req) => {
           .from('analyses')
           .update({
             status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Unknown error'
+            error_message: message
           })
           .eq('id', analysisId);
       } catch (updateError) {
@@ -354,10 +361,10 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: message }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: statusCode,
       }
     );
   }
