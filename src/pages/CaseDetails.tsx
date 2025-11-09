@@ -212,34 +212,198 @@ export default function CaseDetails() {
             <TabsContent value="details">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-6">
+                    {/* Basic Information */}
                     <div>
-                      <label className="text-sm font-medium">File Name</label>
-                      <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                        <FileText className="w-4 h-4" />
-                        {caseData.file_name}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Status</label>
-                      <div className="mt-1">
-                        <Badge variant={caseData.status === "completed" ? "default" : "secondary"}>
-                          {caseData.status}
-                        </Badge>
+                      <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm font-medium">File Name</label>
+                          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                            <FileText className="w-4 h-4" />
+                            {caseData.file_name}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Status</label>
+                          <div className="mt-1">
+                            <Badge variant={caseData.status === "completed" ? "default" : "secondary"}>
+                              {caseData.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Created</label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {new Date(caseData.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Last Updated</label>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {new Date(caseData.updated_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium">Created</label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(caseData.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Last Updated</label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(caseData.updated_at).toLocaleDateString()}
-                      </p>
-                    </div>
+
+                    {/* Fact Sheet */}
+                    {caseData.results?.legalMemo && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold mb-4">Fact Sheet</h3>
+                        <div className="space-y-4">
+                          {caseData.results.legalMemo.client_name && (
+                            <div>
+                              <label className="text-sm font-medium">Client Name</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.client_name}</p>
+                            </div>
+                          )}
+                          
+                          {caseData.results.legalMemo.cdcr_number && (
+                            <div>
+                              <label className="text-sm font-medium">CDCR Number</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.cdcr_number}</p>
+                            </div>
+                          )}
+                          
+                          {caseData.results.legalMemo.date_of_birth && (
+                            <div>
+                              <label className="text-sm font-medium">Date of Birth</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.date_of_birth}</p>
+                            </div>
+                          )}
+
+                          {caseData.results.legalMemo.short_summary && (
+                            <div>
+                              <label className="text-sm font-medium">Summary</label>
+                              <p className="text-sm mt-1 whitespace-pre-wrap">{caseData.results.legalMemo.short_summary}</p>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-4">
+                            {caseData.results.legalMemo.convicted_of && (
+                              <div>
+                                <label className="text-sm font-medium">Convicted Of</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.convicted_of}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.sentence && (
+                              <div>
+                                <label className="text-sm font-medium">Sentence</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.sentence}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.date_of_crime && (
+                              <div>
+                                <label className="text-sm font-medium">Date of Crime</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.date_of_crime}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.date_of_arrest && (
+                              <div>
+                                <label className="text-sm font-medium">Date of Arrest</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.date_of_arrest}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.date_of_conviction && (
+                              <div>
+                                <label className="text-sm font-medium">Date of Conviction</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.date_of_conviction}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.county_of_conviction && (
+                              <div>
+                                <label className="text-sm font-medium">County of Conviction</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.county_of_conviction}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.location_of_crime && (
+                              <div>
+                                <label className="text-sm font-medium">Location of Crime</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.location_of_crime}</p>
+                              </div>
+                            )}
+                            
+                            {caseData.results.legalMemo.trial_court_case_no && (
+                              <div>
+                                <label className="text-sm font-medium">Trial Court Case No</label>
+                                <p className="text-sm mt-1">{caseData.results.legalMemo.trial_court_case_no}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {caseData.results.legalMemo.trial_attorney && (
+                            <div>
+                              <label className="text-sm font-medium">Trial Attorney</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.trial_attorney}</p>
+                            </div>
+                          )}
+                          
+                          {caseData.results.legalMemo.prosecuting_attorney && (
+                            <div>
+                              <label className="text-sm font-medium">Prosecuting Attorney</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.prosecuting_attorney}</p>
+                            </div>
+                          )}
+
+                          {caseData.results.legalMemo.evidence_used_to_convict && caseData.results.legalMemo.evidence_used_to_convict.length > 0 && (
+                            <div>
+                              <label className="text-sm font-medium">Evidence Used to Convict</label>
+                              <ul className="text-sm mt-1 list-disc list-inside space-y-1">
+                                {caseData.results.legalMemo.evidence_used_to_convict.map((evidence: string, idx: number) => (
+                                  <li key={idx}>{evidence}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {caseData.results.legalMemo.defense_presented && (
+                            <div>
+                              <label className="text-sm font-medium">Defense Presented</label>
+                              <p className="text-sm mt-1 whitespace-pre-wrap">{caseData.results.legalMemo.defense_presented}</p>
+                            </div>
+                          )}
+                          
+                          {caseData.results.legalMemo.prosecution_presented && (
+                            <div>
+                              <label className="text-sm font-medium">Prosecution Presented</label>
+                              <p className="text-sm mt-1 whitespace-pre-wrap">{caseData.results.legalMemo.prosecution_presented}</p>
+                            </div>
+                          )}
+
+                          {caseData.results.legalMemo.wrongful_conviction_issues && caseData.results.legalMemo.wrongful_conviction_issues.length > 0 && (
+                            <div>
+                              <label className="text-sm font-medium">Wrongful Conviction Issues</label>
+                              <ul className="text-sm mt-1 list-disc list-inside space-y-1">
+                                {caseData.results.legalMemo.wrongful_conviction_issues.map((issue: string, idx: number) => (
+                                  <li key={idx}>{issue}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {caseData.results.legalMemo.parole_eligibility_date && (
+                            <div>
+                              <label className="text-sm font-medium">Parole Eligibility Date</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.parole_eligibility_date}</p>
+                            </div>
+                          )}
+                          
+                          {caseData.results.legalMemo.prior_parole_hearing_result && (
+                            <div>
+                              <label className="text-sm font-medium">Prior Parole Hearing Result</label>
+                              <p className="text-sm mt-1">{caseData.results.legalMemo.prior_parole_hearing_result}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
