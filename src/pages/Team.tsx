@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Check, X, Shield, UserCog } from "lucide-react";
+import { Pencil, Check, X, Shield, UserCog, Users as UsersIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,9 +58,18 @@ export default function Team() {
     totalHigh: 0,
     avgCasesPerMember: 0
   });
+  const [teamSettings, setTeamSettings] = useState({
+    id: "",
+    team_name: "Justice Team",
+    team_icon: "⚖️"
+  });
+  const [editingTeamSettings, setEditingTeamSettings] = useState(false);
+  const [editingTeamSettingsName, setEditingTeamSettingsName] = useState("");
+  const [editingTeamSettingsIcon, setEditingTeamSettingsIcon] = useState("");
   useEffect(() => {
     checkAuth();
     fetchTeamData();
+    fetchTeamSettings();
   }, []);
   useEffect(() => {
     if (selectedMember) {
@@ -173,6 +182,61 @@ export default function Team() {
       setMemberCases(data);
     }
   };
+
+  const fetchTeamSettings = async () => {
+    const { data, error } = await supabase
+      .from("team_settings")
+      .select("*")
+      .maybeSingle();
+    
+    if (!error && data) {
+      setTeamSettings({
+        id: data.id,
+        team_name: data.team_name,
+        team_icon: data.team_icon
+      });
+    }
+  };
+
+  const handleStartEditTeamSettings = () => {
+    setEditingTeamSettings(true);
+    setEditingTeamSettingsName(teamSettings.team_name);
+    setEditingTeamSettingsIcon(teamSettings.team_icon);
+  };
+
+  const handleCancelEditTeamSettings = () => {
+    setEditingTeamSettings(false);
+    setEditingTeamSettingsName("");
+    setEditingTeamSettingsIcon("");
+  };
+
+  const handleSaveTeamSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from("team_settings")
+        .update({
+          team_name: editingTeamSettingsName,
+          team_icon: editingTeamSettingsIcon
+        })
+        .eq("id", teamSettings.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Team settings updated"
+      });
+
+      handleCancelEditTeamSettings();
+      fetchTeamSettings();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
   const getInitials = (name: string | null, email: string) => {
     if (name) {
       return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -278,10 +342,58 @@ export default function Team() {
       <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold mb-2">Team Dashboard</h2>
-          <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
-        </div>
+        {/* Team Header Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {editingTeamSettings ? (
+                  <div className="flex items-center gap-3">
+                    <Input
+                      value={editingTeamSettingsIcon}
+                      onChange={(e) => setEditingTeamSettingsIcon(e.target.value)}
+                      placeholder="Icon"
+                      className="w-20 text-2xl text-center"
+                      maxLength={2}
+                    />
+                    <Input
+                      value={editingTeamSettingsName}
+                      onChange={(e) => setEditingTeamSettingsName(e.target.value)}
+                      placeholder="Team Name"
+                      className="text-2xl font-bold"
+                    />
+                    <Button size="sm" onClick={handleSaveTeamSettings}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditTeamSettings}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-4xl">{teamSettings.team_icon}</div>
+                    <div>
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        {teamSettings.team_name}
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={handleStartEditTeamSettings}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Team Statistics Overview */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
