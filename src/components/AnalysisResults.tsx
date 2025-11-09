@@ -124,16 +124,10 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
           <ArrowLeft className="w-4 h-4" />
           New Analysis
         </Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/guide")} className="gap-2">
-            <BookOpen className="w-4 h-4" />
-            Interpretation Guide
-          </Button>
-          <Button variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export Report
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => navigate("/guide")} className="gap-2">
+          <BookOpen className="w-4 h-4" />
+          Interpretation Guide
+        </Button>
       </div>
 
       <Accordion type="multiple" defaultValue={["score", "claims", "bias"]} className="space-y-4">
