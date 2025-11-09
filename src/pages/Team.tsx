@@ -130,16 +130,26 @@ export default function Team() {
 
     setTeamMembers(membersWithCounts);
 
-    // Calculate team-wide statistics
-    const totalCases = membersWithCounts.reduce((sum, m) => sum + m.case_count, 0);
-    const totalUrgent = membersWithCounts.reduce((sum, m) => sum + m.urgent_count, 0);
-    const totalHigh = membersWithCounts.reduce((sum, m) => sum + m.high_priority_count, 0);
+    // Get ALL cases in the system (not just assigned ones)
+    const { count: allCasesCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true });
+
+    const { count: allHighCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("priority", "high");
+
+    const { count: allUrgentCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("priority", "urgent");
 
     setTeamStats({
-      totalCases,
-      totalUrgent,
-      totalHigh,
-      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round(totalCases / membersWithCounts.length) : 0,
+      totalCases: allCasesCount || 0,
+      totalUrgent: allUrgentCount || 0,
+      totalHigh: allHighCount || 0,
+      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0,
     });
   };
 
