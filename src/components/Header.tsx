@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, FileText, LogOut } from "lucide-react";
+import { Brain, LayoutDashboard, Users, FileText, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -25,6 +25,9 @@ export const Header = ({ user }: HeaderProps) => {
       <div className="container mx-auto px-6 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Brain className="w-6 h-6 text-primary" />
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">JusticeLens</h1>
               <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
