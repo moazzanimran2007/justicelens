@@ -42,6 +42,7 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
   };
 
   const fetchComments = async () => {
+    console.log('Fetching comments for case:', caseId);
     const { data, error } = await supabase
       .from("case_comments")
       .select(`
@@ -54,7 +55,10 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching comments:', error);
+    } else {
+      console.log('Fetched comments:', data);
       setComments(data as any);
     }
   };
@@ -70,7 +74,8 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
           table: "case_comments",
           filter: `case_id=eq.${caseId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Comment realtime update:', payload);
           fetchComments();
         }
       )
@@ -85,18 +90,41 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
+    if (!currentUserId) {
+      toast({ 
+        title: "Authentication Error", 
+        description: "Please refresh the page and try again",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setLoading(true);
-    const { error } = await supabase.from("case_comments").insert({
+    
+    console.log('Submitting comment:', {
+      case_id: caseId,
+      user_id: currentUserId,
+      comment_text: newComment.trim()
+    });
+
+    const { data, error } = await supabase.from("case_comments").insert({
       case_id: caseId,
       user_id: currentUserId,
       comment_text: newComment.trim(),
-    });
+    }).select();
 
     if (error) {
-      toast({ title: "Error posting comment", variant: "destructive" });
+      console.error('Comment insert error:', error);
+      toast({ 
+        title: "Error posting comment", 
+        description: error.message,
+        variant: "destructive" 
+      });
     } else {
+      console.log('Comment posted successfully:', data);
       setNewComment("");
-      toast({ title: "Comment posted" });
+      toast({ title: "Comment posted successfully" });
+      fetchComments(); // Refresh comments immediately
     }
     setLoading(false);
   };
