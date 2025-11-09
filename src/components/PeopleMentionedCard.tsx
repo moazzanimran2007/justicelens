@@ -21,6 +21,9 @@ export const PeopleMentionedCard = ({
 }: PeopleMentionedCardProps) => {
   const { toast } = useToast();
   const [searchingPerson, setSearchingPerson] = useState<string | null>(null);
+  const [isBulkSearching, setIsBulkSearching] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [showResearch, setShowResearch] = useState(false);
 
   if (!people || people.length === 0) return null;
 
@@ -35,7 +38,7 @@ export const PeopleMentionedCard = ({
     }
 
     setSearchingPerson(personName);
-    
+    setShowResearch(true);
     try {
       const { data, error } = await supabase.functions.invoke('search-person-info', {
         body: {
@@ -84,6 +87,31 @@ export const PeopleMentionedCard = ({
     }
   };
 
+  const handleBulkSearch = async () => {
+    if (!analysisId) {
+      toast({
+        title: "Error",
+        description: "Analysis ID not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setShowResearch(true);
+    setIsBulkSearching(true);
+    setBulkProgress(0);
+
+    const pending = people.filter((p: any) => !additionalInfo?.find((i: any) => i.name === p.name));
+    for (let i = 0; i < pending.length; i++) {
+      await handleSearchPerson(pending[i].name, pending[i].role);
+      setBulkProgress(i + 1);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    setIsBulkSearching(false);
+    onUpdate?.();
+  };
+
   return (
     <Card className="p-6 border-border shadow-md bg-gradient-to-br from-card to-muted/20">
       <div className="flex items-start gap-4 mb-6">
@@ -98,6 +126,22 @@ export const PeopleMentionedCard = ({
             {people.length} {people.length === 1 ? 'person' : 'people'} identified with automatic CDCR-focused research
           </p>
         </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 mb-4">
+        <Button size="sm" onClick={handleBulkSearch} disabled={isBulkSearching}>
+          {isBulkSearching ? (
+            <>
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+              Searching {bulkProgress}/{people.length}
+            </>
+          ) : (
+            <>
+              <Search className="w-3 h-3 mr-1" />
+              Search All
+            </>
+          )}
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
@@ -142,7 +186,7 @@ export const PeopleMentionedCard = ({
                 )}
 
                 {/* CDCR Research Results */}
-                {hasInfo && (
+                {showResearch && hasInfo && (
                   <div className="pt-3 border-t border-border/50">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/30">

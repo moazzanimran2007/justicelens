@@ -21,6 +21,9 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
   const [isEditing, setIsEditing] = useState(false);
   const [editedMemo, setEditedMemo] = useState<any>(memo);
   const [saving, setSaving] = useState(false);
+  const [isBulkSearching, setIsBulkSearching] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [showResearch, setShowResearch] = useState(false);
 
   useEffect(() => {
     checkAdminStatus();
@@ -91,6 +94,7 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
     }
 
     setSearchingPerson(personName);
+    setShowResearch(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('search-person-info', {
@@ -139,6 +143,28 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
     } finally {
       setSearchingPerson(null);
     }
+  };
+  const handleBulkSearch = async () => {
+    if (!analysisId) {
+      toast({ title: "Error", description: "Analysis ID not available", variant: "destructive" });
+      return;
+    }
+    setShowResearch(true);
+    setIsBulkSearching(true);
+    setBulkProgress(0);
+
+    const pending = (memo.people_mentioned || []).filter((p: any) =>
+      !(memo.people_additional_info || []).some((i: any) => i.name === p.name)
+    );
+
+    for (let i = 0; i < pending.length; i++) {
+      await handleSearchPerson(pending[i].name, pending[i].role);
+      setBulkProgress(i + 1);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+
+    setIsBulkSearching(false);
+    onUpdate?.();
   };
 
   const InfoField = ({ label, value, field }: { label: string; value: any; field?: string }) => {
@@ -370,6 +396,21 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
           <div className="mb-4 pb-2 border-b-2 border-primary/20">
             <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">People Mentioned in Transcript</h4>
           </div>
+          <div className="flex items-center justify-end gap-2 mb-4">
+            <Button size="sm" onClick={handleBulkSearch} disabled={isBulkSearching}>
+              {isBulkSearching ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  Searching {bulkProgress}/{memo.people_mentioned.length}
+                </>
+              ) : (
+                <>
+                  <Search className="w-3 h-3 mr-1" />
+                  Search All
+                </>
+              )}
+            </Button>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             {memo.people_mentioned.map((person: any, idx: number) => {
               const additionalInfo = memo.people_additional_info?.find(
@@ -390,7 +431,7 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
                   )}
                   
                   {/* Additional Information Section */}
-                  {additionalInfo && (
+                  {showResearch && additionalInfo && (
                     <div className="mt-3 pt-3 border-t border-border/50">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs text-muted-foreground">
