@@ -14,6 +14,7 @@ export default function Pipeline() {
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [sortBy, setSortBy] = useState<string>("created_at");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -123,6 +124,19 @@ export default function Pipeline() {
                   </Button>
                   
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
+                    <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                      <SelectTrigger className="w-[180px] border-0 shadow-none focus:ring-0">
+                        <SelectValue placeholder="Filter by..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card z-50">
+                        <SelectItem value="all">All Cases</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        <SelectItem value="mine">Assigned to Me</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
                     <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-[180px] border-0 shadow-none focus:ring-0">
@@ -165,6 +179,8 @@ export default function Pipeline() {
         <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <KanbanBoard
             sortBy={sortBy}
+            assigneeFilter={assigneeFilter}
+            currentUserId={user?.id}
             selectionMode={selectionMode}
             selectedCases={selectedCases}
             onCaseSelect={handleCaseSelect}

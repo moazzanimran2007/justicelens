@@ -33,6 +33,8 @@ interface Case {
 
 interface KanbanBoardProps {
   sortBy?: string;
+  assigneeFilter?: string;
+  currentUserId?: string;
   selectionMode?: boolean;
   selectedCases?: Set<string>;
   onCaseSelect?: (caseId: string, selected: boolean) => void;
@@ -40,6 +42,8 @@ interface KanbanBoardProps {
 
 export const KanbanBoard = ({ 
   sortBy = "created_at",
+  assigneeFilter = "all",
+  currentUserId,
   selectionMode = false,
   selectedCases = new Set(),
   onCaseSelect
@@ -128,7 +132,14 @@ export const KanbanBoard = ({
 
 
   const getCasesForStage = (stageId: string) => {
-    const filtered = cases.filter((c) => c.stage_id === stageId);
+    let filtered = cases.filter((c) => c.stage_id === stageId);
+    
+    // Apply assignee filter
+    if (assigneeFilter === "unassigned") {
+      filtered = filtered.filter((c) => !c.assigned_to);
+    } else if (assigneeFilter === "mine" && currentUserId) {
+      filtered = filtered.filter((c) => c.assigned_to === currentUserId);
+    }
     
     // Sort based on selected criteria
     if (sortBy === "innocence_score") {
