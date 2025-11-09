@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { LogOut, Upload, LayoutDashboard } from "lucide-react";
+import { LogOut, Upload, LayoutDashboard, Users } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default function Pipeline() {
   const navigate = useNavigate();
@@ -45,9 +46,14 @@ export default function Pipeline() {
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Pipeline
                 </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Team
+                </Button>
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <span className="text-sm text-muted-foreground">{user?.email}</span>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="w-4 h-4 mr-2" />

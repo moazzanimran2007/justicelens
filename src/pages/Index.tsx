@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, FileText, AlertCircle, Brain, LogOut, LayoutDashboard } from "lucide-react";
+import { Upload, FileText, AlertCircle, Brain, LogOut, LayoutDashboard, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -10,6 +10,7 @@ import MultiFileUpload from "@/components/MultiFileUpload";
 import ModuleSelector from "@/components/ModuleSelector";
 import AnalysisResults from "@/components/AnalysisResults";
 import { extractTextFromPdf } from "@/lib/pdf-text";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -330,6 +331,11 @@ const Index = () => {
                 <LayoutDashboard className="w-4 h-4" />
                 Pipeline
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate("/team")} className="gap-2">
+                <Users className="w-4 h-4" />
+                Team
+              </Button>
+              <NotificationBell />
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
                 <LogOut className="w-4 h-4" />
