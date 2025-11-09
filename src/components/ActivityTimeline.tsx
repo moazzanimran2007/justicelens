@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
-import { Activity, ArrowRight, User, Upload } from "lucide-react";
+import { Activity, ArrowRight, User, Upload, Plus, AlertCircle } from "lucide-react";
 
 interface ActivityItem {
   id: string;
@@ -74,6 +74,10 @@ export const ActivityTimeline = ({ caseId }: ActivityTimelineProps) => {
         return <ArrowRight className="w-4 h-4" />;
       case "assignment_changed":
         return <User className="w-4 h-4" />;
+      case "case_created":
+        return <Plus className="w-4 h-4" />;
+      case "priority_changed":
+        return <AlertCircle className="w-4 h-4" />;
       default:
         return <Activity className="w-4 h-4" />;
     }
