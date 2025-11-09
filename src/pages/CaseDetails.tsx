@@ -207,11 +207,10 @@ export default function CaseDetails() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold mb-2">
-                  {caseData.client_name || caseData.file_name}
+                  {caseData.client_name && caseData.case_number 
+                    ? `${caseData.client_name} - ${caseData.case_number}`
+                    : caseData.client_name || caseData.case_number || caseData.file_name}
                 </h2>
-                {caseData.case_number && (
-                  <p className="text-sm text-muted-foreground">{caseData.case_number}</p>
-                )}
               </div>
             </div>
 

@@ -100,11 +100,10 @@ export const CaseCard = ({
               )}
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium text-sm truncate">
-                  {caseItem.client_name || caseItem.file_name}
+                  {caseItem.client_name && caseItem.case_number 
+                    ? `${caseItem.client_name} - ${caseItem.case_number}`
+                    : caseItem.client_name || caseItem.case_number || caseItem.file_name}
                 </h4>
-                {caseItem.case_number && (
-                  <p className="text-xs text-muted-foreground">{caseItem.case_number}</p>
-                )}
                 {caseItem.assignee && (
                   <p className="text-xs text-muted-foreground">
                     Assigned to: {caseItem.assignee.nickname || caseItem.assignee.full_name}
@@ -146,11 +145,10 @@ export const CaseCard = ({
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">
               <h4 className="text-sm font-semibold">
-                {caseItem.client_name || caseItem.file_name}
+                {caseItem.client_name && caseItem.case_number 
+                  ? `${caseItem.client_name} - ${caseItem.case_number}`
+                  : caseItem.client_name || caseItem.case_number || caseItem.file_name}
               </h4>
-              {caseItem.case_number && (
-                <p className="text-xs text-muted-foreground">{caseItem.case_number}</p>
-              )}
             </div>
             <Button
               size="sm"
