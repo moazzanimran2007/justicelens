@@ -5,6 +5,7 @@ import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft, BookOpen,
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LegalMemoDisplay from "./LegalMemoDisplay";
@@ -134,218 +135,291 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
         </div>
       </div>
 
-      {/* Innocence Likelihood Score */}
-      <InnocenceScoreCard analysis={analysis} legalMemo={legalMemo} />
+      <Accordion type="multiple" defaultValue={["score", "claims", "bias"]} className="space-y-4">
+        {/* Innocence Likelihood Score */}
+        <AccordionItem value="score" className="border-none">
+          <Card className="border-border shadow-md">
+            <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+              <div className="flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-success/10">
+                  <BarChart3 className="w-6 h-6 text-success" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">
+                  Innocence Likelihood Score
+                </h3>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+              <InnocenceScoreCard analysis={analysis} legalMemo={legalMemo} />
+            </AccordionContent>
+          </Card>
+        </AccordionItem>
 
-      {/* Innocence Claims */}
-      {analysis.innocenceClaims && (
-        <Card className="p-6 border-border shadow-md">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <AlertCircle className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-foreground mb-2">
-                Innocence Claims Detected
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Found {analysis.innocenceClaims.count} explicit or implicit claims of innocence
-              </p>
-              <div className="space-y-3">
-                {analysis.innocenceClaims.examples?.map((claim: string, idx: number) => (
-                  <div key={idx} className="p-4 bg-muted rounded-lg border-l-4 border-primary">
-                    <p className="text-sm text-foreground italic">"{claim}"</p>
+        {/* Innocence Claims */}
+        {analysis.innocenceClaims && (
+          <AccordionItem value="claims" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <AlertCircle className="w-6 h-6 text-primary" />
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* People Mentioned - Prominent Display */}
-      {legalMemo?.people_mentioned && legalMemo.people_mentioned.length > 0 && (
-        <PeopleMentionedCard
-          people={legalMemo.people_mentioned}
-          additionalInfo={legalMemo.people_additional_info}
-          analysisId={analysisId}
-          onUpdate={() => {
-            if (analysisId) {
-              supabase
-                .from('legal_memos')
-                .select('*')
-                .eq('analysis_id', analysisId)
-                .single()
-                .then(({ data }) => {
-                  if (data) setLegalMemo(data);
-                });
-            }
-          }}
-        />
-      )}
-
-      {/* Bias Indicators */}
-      {analysis.biasIndicators && (
-        <Card className="p-6 border-border shadow-md">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <BarChart3 className="w-6 h-6 text-accent" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-foreground mb-2">
-                Bias & Fairness Indicators
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Analysis of potentially problematic language patterns
-              </p>
-              <div className="space-y-4">
-                {analysis.biasIndicators.categories?.map((category: any, idx: number) => (
-                  <BiasCategory key={idx} category={category} getSeverityColor={getSeverityColor} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Legal Memo / Fact Sheet */}
-      {legalMemo && (
-        <LegalMemoDisplay 
-          memo={legalMemo} 
-          analysisId={analysisId}
-          onUpdate={() => {
-            // Refetch the legal memo when updated
-            if (analysisId) {
-              supabase
-                .from('legal_memos')
-                .select('*')
-                .eq('analysis_id', analysisId)
-                .single()
-                .then(({ data }) => {
-                  if (data) setLegalMemo(data);
-                });
-            }
-          }}
-        />
-      )}
-      
-      {/* Legacy Summary Display (if no legal memo available) */}
-      {!legalMemo && analysis.summary && (
-        <Card className="p-6 border-border shadow-md">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-success/10">
-              <FileText className="w-6 h-6 text-success" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-foreground mb-2">
-                Advocate Fact Sheet
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Key information extracted from the hearing
-              </p>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Offense Context</p>
-                  <p className="text-sm text-foreground">{analysis.summary.offenseContext}</p>
+                  <div className="text-left">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Innocence Claims Detected
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Found {analysis.innocenceClaims.count} explicit or implicit claims of innocence
+                    </p>
+                  </div>
                 </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Years Served</p>
-                  <p className="text-sm text-foreground">{analysis.summary.yearsServed} years</p>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Programming</p>
-                  <p className="text-sm text-foreground">{analysis.summary.programming}</p>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">Parole Factors</p>
-                  <p className="text-sm text-foreground">{analysis.summary.paroleFactors}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Language Analysis */}
-      {analysis.languageAnalysis && (
-        <Card className="p-6 border-border shadow-md">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <Brain className="w-6 h-6 text-warning" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-foreground mb-2">
-                Language Pattern Analysis
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Frequency and context of key terms used by the board
-              </p>
-              <div className="grid md:grid-cols-3 gap-4">
-                {analysis.languageAnalysis.insight && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-center mb-3">
-                      <p className="text-2xl font-bold text-primary mb-1">
-                        {analysis.languageAnalysis.insight.frequency}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">"Insight" mentions</p>
-                      <Badge variant="secondary">{analysis.languageAnalysis.insight.context} usage</Badge>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="space-y-3">
+                  {analysis.innocenceClaims.examples?.map((claim: string, idx: number) => (
+                    <div key={idx} className="p-4 bg-muted rounded-lg border-l-4 border-primary">
+                      <p className="text-sm text-foreground italic">"{claim}"</p>
                     </div>
-                    {analysis.languageAnalysis.insight.examples && analysis.languageAnalysis.insight.examples.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {analysis.languageAnalysis.insight.examples.slice(0, 2).map((example: string, idx: number) => (
-                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-primary pl-2">
-                            "{example}"
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                  ))}
+                </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* People Mentioned */}
+        {legalMemo?.people_mentioned && legalMemo.people_mentioned.length > 0 && (
+          <AccordionItem value="people" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <FileText className="w-6 h-6 text-accent" />
                   </div>
-                )}
-                {analysis.languageAnalysis.remorse && (
+                  <h3 className="text-xl font-bold text-foreground">
+                    People Mentioned
+                  </h3>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <PeopleMentionedCard
+                  people={legalMemo.people_mentioned}
+                  additionalInfo={legalMemo.people_additional_info}
+                  analysisId={analysisId}
+                  onUpdate={() => {
+                    if (analysisId) {
+                      supabase
+                        .from('legal_memos')
+                        .select('*')
+                        .eq('analysis_id', analysisId)
+                        .single()
+                        .then(({ data }) => {
+                          if (data) setLegalMemo(data);
+                        });
+                    }
+                  }}
+                />
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* Bias Indicators */}
+        {analysis.biasIndicators && (
+          <AccordionItem value="bias" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <BarChart3 className="w-6 h-6 text-accent" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Bias & Fairness Indicators
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Analysis of potentially problematic language patterns
+                    </p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="space-y-4">
+                  {analysis.biasIndicators.categories?.map((category: any, idx: number) => (
+                    <BiasCategory key={idx} category={category} getSeverityColor={getSeverityColor} />
+                  ))}
+                </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* Legal Memo / Fact Sheet */}
+        {legalMemo && (
+          <AccordionItem value="memo" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-success/10">
+                    <FileText className="w-6 h-6 text-success" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    Legal Memo / Fact Sheet
+                  </h3>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <LegalMemoDisplay 
+                  memo={legalMemo} 
+                  analysisId={analysisId}
+                  onUpdate={() => {
+                    if (analysisId) {
+                      supabase
+                        .from('legal_memos')
+                        .select('*')
+                        .eq('analysis_id', analysisId)
+                        .single()
+                        .then(({ data }) => {
+                          if (data) setLegalMemo(data);
+                        });
+                    }
+                  }}
+                />
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+        
+        {/* Legacy Summary Display */}
+        {!legalMemo && analysis.summary && (
+          <AccordionItem value="summary" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-success/10">
+                    <FileText className="w-6 h-6 text-success" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Advocate Fact Sheet
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Key information extracted from the hearing
+                    </p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="grid md:grid-cols-2 gap-4">
                   <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-center mb-3">
-                      <p className="text-2xl font-bold text-accent mb-1">
-                        {analysis.languageAnalysis.remorse.frequency}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">"Remorse" mentions</p>
-                      <Badge variant="secondary">{analysis.languageAnalysis.remorse.context} usage</Badge>
-                    </div>
-                    {analysis.languageAnalysis.remorse.examples && analysis.languageAnalysis.remorse.examples.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {analysis.languageAnalysis.remorse.examples.slice(0, 2).map((example: string, idx: number) => (
-                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-accent pl-2">
-                            "{example}"
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Offense Context</p>
+                    <p className="text-sm text-foreground">{analysis.summary.offenseContext}</p>
                   </div>
-                )}
-                {analysis.languageAnalysis.accountability && (
                   <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-center mb-3">
-                      <p className="text-2xl font-bold text-success mb-1">
-                        {analysis.languageAnalysis.accountability.frequency}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">"Accountability" mentions</p>
-                      <Badge variant="secondary">{analysis.languageAnalysis.accountability.context} usage</Badge>
-                    </div>
-                    {analysis.languageAnalysis.accountability.examples && analysis.languageAnalysis.accountability.examples.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {analysis.languageAnalysis.accountability.examples.slice(0, 2).map((example: string, idx: number) => (
-                          <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-success pl-2">
-                            "{example}"
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Years Served</p>
+                    <p className="text-sm text-foreground">{analysis.summary.yearsServed} years</p>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Programming</p>
+                    <p className="text-sm text-foreground">{analysis.summary.programming}</p>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Parole Factors</p>
+                    <p className="text-sm text-foreground">{analysis.summary.paroleFactors}</p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* Language Analysis */}
+        {analysis.languageAnalysis && (
+          <AccordionItem value="language" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <Brain className="w-6 h-6 text-warning" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Language Pattern Analysis
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Frequency and context of key terms used by the board
+                    </p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <div className="grid md:grid-cols-3 gap-4">
+                  {analysis.languageAnalysis.insight && (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <div className="text-center mb-3">
+                        <p className="text-2xl font-bold text-primary mb-1">
+                          {analysis.languageAnalysis.insight.frequency}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-2">"Insight" mentions</p>
+                        <Badge variant="secondary">{analysis.languageAnalysis.insight.context} usage</Badge>
+                      </div>
+                      {analysis.languageAnalysis.insight.examples && analysis.languageAnalysis.insight.examples.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {analysis.languageAnalysis.insight.examples.slice(0, 2).map((example: string, idx: number) => (
+                            <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-primary pl-2">
+                              "{example}"
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {analysis.languageAnalysis.remorse && (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <div className="text-center mb-3">
+                        <p className="text-2xl font-bold text-accent mb-1">
+                          {analysis.languageAnalysis.remorse.frequency}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-2">"Remorse" mentions</p>
+                        <Badge variant="secondary">{analysis.languageAnalysis.remorse.context} usage</Badge>
+                      </div>
+                      {analysis.languageAnalysis.remorse.examples && analysis.languageAnalysis.remorse.examples.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {analysis.languageAnalysis.remorse.examples.slice(0, 2).map((example: string, idx: number) => (
+                            <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-accent pl-2">
+                              "{example}"
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {analysis.languageAnalysis.accountability && (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <div className="text-center mb-3">
+                        <p className="text-2xl font-bold text-success mb-1">
+                          {analysis.languageAnalysis.accountability.frequency}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-2">"Accountability" mentions</p>
+                        <Badge variant="secondary">{analysis.languageAnalysis.accountability.context} usage</Badge>
+                      </div>
+                      {analysis.languageAnalysis.accountability.examples && analysis.languageAnalysis.accountability.examples.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {analysis.languageAnalysis.accountability.examples.slice(0, 2).map((example: string, idx: number) => (
+                            <p key={idx} className="text-xs text-muted-foreground italic border-l-2 border-success pl-2">
+                              "{example}"
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+      </Accordion>
     </div>
   );
 };
