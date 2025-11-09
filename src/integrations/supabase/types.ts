@@ -150,6 +150,13 @@ export type Database = {
             referencedRelation: "analyses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "case_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       legal_memos: {
