@@ -116,10 +116,12 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* Client Information */}
       {(memo.client_name || memo.cdcr_number || memo.date_of_birth) && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-            Client Information
-          </h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">
+              Client Information
+            </h4>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             <InfoField label="Client Name" value={memo.client_name} />
             <InfoField label="CDCR Number" value={memo.cdcr_number} />
@@ -131,8 +133,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* Introduction */}
       {(memo.short_summary || memo.evidence_used_to_convict || memo.potential_theory_of_case) && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3">Introduction</h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Introduction</h4>
+          </div>
           <div className="space-y-3">
             <InfoField label="Summary" value={memo.short_summary} />
             <InfoField label="Evidence Used to Convict" value={memo.evidence_used_to_convict} />
@@ -142,8 +146,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
       )}
 
       {/* Conviction & Sentence Summary */}
-      <div className="mb-6">
-        <h4 className="text-lg font-semibold text-foreground mb-3">Conviction & Sentence Summary</h4>
+      <div className="mb-8">
+        <div className="mb-4 pb-2 border-b-2 border-primary/20">
+          <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Conviction & Sentence Summary</h4>
+        </div>
         <div className="grid md:grid-cols-2 gap-3">
           <InfoField label="Date of Crime" value={memo.date_of_crime} />
           <InfoField label="Location of Crime" value={memo.location_of_crime} />
@@ -160,8 +166,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* Superior Court Case Information */}
       {(memo.trial_court_case_no || memo.trial_attorney || memo.prosecuting_attorney) && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3">Superior Court Case Information</h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Superior Court Case Information</h4>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             <InfoField label="Trial Court Case No." value={memo.trial_court_case_no} />
             <InfoField label="Trial Court/Judge/Dept." value={memo.trial_court_judge_dept} />
@@ -175,8 +183,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* Appellate Court Information */}
       {(memo.appellate_case_no || memo.appellate_attorneys) && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3">Appellate Court Information</h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Appellate Court Information</h4>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             <InfoField label="Appellate Case No." value={memo.appellate_case_no} />
             <InfoField label="Appellate Attorneys" value={memo.appellate_attorneys} />
@@ -186,8 +196,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* Post-Conviction Issues */}
       {(memo.direct_appeal_date || memo.petition_for_review_date || memo.habeas_petition_date) && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3">Post-Conviction Issues Raised</h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Post-Conviction Issues Raised</h4>
+          </div>
           
           {memo.direct_appeal_date && (
             <div className="mb-4">
@@ -233,8 +245,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
 
       {/* People Mentioned */}
       {memo.people_mentioned && memo.people_mentioned.length > 0 && (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-foreground mb-3">People Mentioned in Transcript</h4>
+        <div className="mb-8">
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">People Mentioned in Transcript</h4>
+          </div>
           <div className="grid md:grid-cols-2 gap-3">
             {memo.people_mentioned.map((person: any, idx: number) => {
               const additionalInfo = memo.people_additional_info?.find(
@@ -317,7 +331,9 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
       {/* Wrongful Conviction Issues */}
       {memo.wrongful_conviction_issues && memo.wrongful_conviction_issues.length > 0 && (
         <div>
-          <h4 className="text-lg font-semibold text-foreground mb-3">Wrongful Conviction Issues</h4>
+          <div className="mb-4 pb-2 border-b-2 border-primary/20">
+            <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Wrongful Conviction Issues</h4>
+          </div>
           <div className="flex flex-wrap gap-2">
             {memo.wrongful_conviction_issues.map((issue: string, idx: number) => (
               <Badge key={idx} variant="outline" className="text-sm">
