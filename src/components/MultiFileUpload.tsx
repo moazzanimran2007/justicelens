@@ -3,14 +3,16 @@ import { Upload, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MultiFileUploadProps {
   files: File[];
   onFilesSelect: (files: File[]) => void;
   uploadProgress?: Record<string, number>;
+  userId?: string;
 }
 
-const MultiFileUpload = ({ files, onFilesSelect, uploadProgress = {} }: MultiFileUploadProps) => {
+const MultiFileUpload = ({ files, onFilesSelect, uploadProgress = {}, userId }: MultiFileUploadProps) => {
   const { toast } = useToast();
 
   const validateFile = (file: File): boolean => {
@@ -39,34 +41,77 @@ const MultiFileUpload = ({ files, onFilesSelect, uploadProgress = {} }: MultiFil
     return true;
   };
 
+  const checkForDuplicates = async (newFiles: File[]): Promise<File[]> => {
+    if (!userId) return newFiles;
+
+    // Check against already uploaded files in database
+    const { data: existingAnalyses } = await supabase
+      .from('analyses')
+      .select('file_name, file_size')
+      .eq('user_id', userId);
+
+    const uniqueFiles: File[] = [];
+    const duplicateFiles: string[] = [];
+
+    for (const file of newFiles) {
+      // Check against database
+      const existsInDb = existingAnalyses?.some(
+        analysis => analysis.file_name === file.name && analysis.file_size === file.size
+      );
+
+      // Check against currently selected files
+      const existsInQueue = files.some(
+        existing => existing.name === file.name && existing.size === file.size
+      );
+
+      if (existsInDb || existsInQueue) {
+        duplicateFiles.push(file.name);
+      } else {
+        uniqueFiles.push(file);
+      }
+    }
+
+    if (duplicateFiles.length > 0) {
+      toast({
+        title: "Duplicate files detected",
+        description: `${duplicateFiles.join(", ")} ${duplicateFiles.length === 1 ? 'has' : 'have'} already been uploaded and will be skipped.`,
+        variant: "destructive",
+      });
+    }
+
+    return uniqueFiles;
+  };
+
   const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
+    async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       const droppedFiles = Array.from(e.dataTransfer.files);
       const validFiles = droppedFiles.filter(validateFile);
+      const uniqueFiles = await checkForDuplicates(validFiles);
       
-      if (validFiles.length > 0) {
-        onFilesSelect([...files, ...validFiles]);
+      if (uniqueFiles.length > 0) {
+        onFilesSelect([...files, ...uniqueFiles]);
         toast({
           title: "Files added",
-          description: `${validFiles.length} file(s) ready for analysis`,
+          description: `${uniqueFiles.length} file(s) ready for analysis`,
         });
       }
     },
-    [files, onFilesSelect, toast]
+    [files, onFilesSelect, toast, userId]
   );
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     
     const selectedFiles = Array.from(e.target.files);
     const validFiles = selectedFiles.filter(validateFile);
+    const uniqueFiles = await checkForDuplicates(validFiles);
     
-    if (validFiles.length > 0) {
-      onFilesSelect([...files, ...validFiles]);
+    if (uniqueFiles.length > 0) {
+      onFilesSelect([...files, ...uniqueFiles]);
       toast({
         title: "Files added",
-        description: `${validFiles.length} file(s) ready for analysis`,
+        description: `${uniqueFiles.length} file(s) ready for analysis`,
       });
     }
   };

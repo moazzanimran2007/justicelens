@@ -394,6 +394,7 @@ const Index = () => {
                 files={files} 
                 onFilesSelect={setFiles}
                 uploadProgress={uploadProgress}
+                userId={user?.id}
               />
               
               {files.length > 0 && (
