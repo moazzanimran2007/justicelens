@@ -1,10 +1,12 @@
 import { Card } from "@/components/ui/card";
-import { FileText, ExternalLink, Search, Loader2 } from "lucide-react";
+import { FileText, ExternalLink, Search, Loader2, Edit, Save, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface LegalMemoDisplayProps {
   memo: any;
@@ -15,6 +17,66 @@ interface LegalMemoDisplayProps {
 const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps) => {
   const { toast } = useToast();
   const [searchingPerson, setSearchingPerson] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedMemo, setEditedMemo] = useState<any>(memo);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
+
+  useEffect(() => {
+    setEditedMemo(memo);
+  }, [memo]);
+
+  const checkAdminStatus = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    setIsAdmin(!!data);
+  };
+
+  const handleSaveEdits = async () => {
+    if (!analysisId) return;
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("legal_memos")
+      .update(editedMemo)
+      .eq("analysis_id", analysisId);
+
+    if (error) {
+      toast({
+        title: "Error saving changes",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Changes saved successfully",
+      });
+      setIsEditing(false);
+      if (onUpdate) onUpdate();
+    }
+    setSaving(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditedMemo(memo);
+    setIsEditing(false);
+  };
+
+  const updateField = (field: string, value: any) => {
+    setEditedMemo((prev: any) => ({ ...prev, [field]: value }));
+  };
 
   if (!memo) return null;
 
@@ -79,13 +141,29 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
     }
   };
 
-  const InfoField = ({ label, value }: { label: string; value: any }) => {
-    if (!value || (Array.isArray(value) && value.length === 0)) return null;
+  const InfoField = ({ label, value, field }: { label: string; value: any; field?: string }) => {
+    if (!value && !isEditing) return null;
+    
+    const displayValue = isEditing && field ? editedMemo[field] : value;
     
     return (
       <div className="p-3 bg-muted/50 rounded-lg">
         <p className="text-xs text-muted-foreground uppercase mb-1 font-semibold">{label}</p>
-        {Array.isArray(value) ? (
+        {isEditing && field ? (
+          Array.isArray(displayValue) ? (
+            <Textarea
+              value={displayValue?.join("\n") || ""}
+              onChange={(e) => updateField(field, e.target.value.split("\n").filter(Boolean))}
+              className="min-h-[80px] text-sm"
+            />
+          ) : (
+            <Input
+              value={displayValue || ""}
+              onChange={(e) => updateField(field, e.target.value)}
+              className="text-sm"
+            />
+          )
+        ) : Array.isArray(value) ? (
           <ul className="list-disc list-inside space-y-1">
             {value.map((item: string, idx: number) => (
               <li key={idx} className="text-sm text-foreground">{item}</li>
@@ -112,6 +190,49 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             Comprehensive case information extracted from transcript
           </p>
         </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdits}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Info
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Client Information */}
@@ -123,10 +244,10 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             </h4>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
-            <InfoField label="Client Name" value={memo.client_name} />
-            <InfoField label="CDCR Number" value={memo.cdcr_number} />
-            <InfoField label="Date of Birth" value={memo.date_of_birth} />
-            <InfoField label="Contact Information" value={memo.contact_information} />
+            <InfoField label="Client Name" value={memo.client_name} field="client_name" />
+            <InfoField label="CDCR Number" value={memo.cdcr_number} field="cdcr_number" />
+            <InfoField label="Date of Birth" value={memo.date_of_birth} field="date_of_birth" />
+            <InfoField label="Contact Information" value={memo.contact_information} field="contact_information" />
           </div>
         </div>
       )}
@@ -138,9 +259,9 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Introduction</h4>
           </div>
           <div className="space-y-3">
-            <InfoField label="Summary" value={memo.short_summary} />
-            <InfoField label="Evidence Used to Convict" value={memo.evidence_used_to_convict} />
-            <InfoField label="Potential Theory of the Case" value={memo.potential_theory_of_case} />
+            <InfoField label="Summary" value={memo.short_summary} field="short_summary" />
+            <InfoField label="Evidence Used to Convict" value={memo.evidence_used_to_convict} field="evidence_used_to_convict" />
+            <InfoField label="Potential Theory of the Case" value={memo.potential_theory_of_case} field="potential_theory_of_case" />
           </div>
         </div>
       )}
@@ -151,16 +272,16 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
           <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Conviction & Sentence Summary</h4>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
-          <InfoField label="Date of Crime" value={memo.date_of_crime} />
-          <InfoField label="Location of Crime" value={memo.location_of_crime} />
-          <InfoField label="Date of Arrest" value={memo.date_of_arrest} />
-          <InfoField label="Date of Conviction" value={memo.date_of_conviction} />
-          <InfoField label="Convicted Of" value={memo.convicted_of} />
-          <InfoField label="County of Conviction" value={memo.county_of_conviction} />
-          <InfoField label="Sentence" value={memo.sentence} />
-          <InfoField label="Parole Eligibility Date" value={memo.parole_eligibility_date} />
-          <InfoField label="Prior Parole Hearing Result" value={memo.prior_parole_hearing_result} />
-          <InfoField label="Client's Priors" value={memo.client_priors} />
+          <InfoField label="Date of Crime" value={memo.date_of_crime} field="date_of_crime" />
+          <InfoField label="Location of Crime" value={memo.location_of_crime} field="location_of_crime" />
+          <InfoField label="Date of Arrest" value={memo.date_of_arrest} field="date_of_arrest" />
+          <InfoField label="Date of Conviction" value={memo.date_of_conviction} field="date_of_conviction" />
+          <InfoField label="Convicted Of" value={memo.convicted_of} field="convicted_of" />
+          <InfoField label="County of Conviction" value={memo.county_of_conviction} field="county_of_conviction" />
+          <InfoField label="Sentence" value={memo.sentence} field="sentence" />
+          <InfoField label="Parole Eligibility Date" value={memo.parole_eligibility_date} field="parole_eligibility_date" />
+          <InfoField label="Prior Parole Hearing Result" value={memo.prior_parole_hearing_result} field="prior_parole_hearing_result" />
+          <InfoField label="Client's Priors" value={memo.client_priors} field="client_priors" />
         </div>
       </div>
 
@@ -171,12 +292,12 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Superior Court Case Information</h4>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
-            <InfoField label="Trial Court Case No." value={memo.trial_court_case_no} />
-            <InfoField label="Trial Court/Judge/Dept." value={memo.trial_court_judge_dept} />
-            <InfoField label="Trial Attorney" value={memo.trial_attorney} />
-            <InfoField label="Prosecuting Attorney" value={memo.prosecuting_attorney} />
-            <InfoField label="Co-Defendant" value={memo.co_defendant} />
-            <InfoField label="Co-Defendant's Attorney" value={memo.co_defendant_attorney} />
+            <InfoField label="Trial Court Case No." value={memo.trial_court_case_no} field="trial_court_case_no" />
+            <InfoField label="Trial Court/Judge/Dept." value={memo.trial_court_judge_dept} field="trial_court_judge_dept" />
+            <InfoField label="Trial Attorney" value={memo.trial_attorney} field="trial_attorney" />
+            <InfoField label="Prosecuting Attorney" value={memo.prosecuting_attorney} field="prosecuting_attorney" />
+            <InfoField label="Co-Defendant" value={memo.co_defendant} field="co_defendant" />
+            <InfoField label="Co-Defendant's Attorney" value={memo.co_defendant_attorney} field="co_defendant_attorney" />
           </div>
         </div>
       )}
@@ -188,8 +309,8 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <h4 className="text-xl font-bold text-foreground uppercase tracking-wide">Appellate Court Information</h4>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
-            <InfoField label="Appellate Case No." value={memo.appellate_case_no} />
-            <InfoField label="Appellate Attorneys" value={memo.appellate_attorneys} />
+            <InfoField label="Appellate Case No." value={memo.appellate_case_no} field="appellate_case_no" />
+            <InfoField label="Appellate Attorneys" value={memo.appellate_attorneys} field="appellate_attorneys" />
           </div>
         </div>
       )}
@@ -205,8 +326,8 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <div className="mb-4">
               <p className="text-sm font-semibold text-foreground mb-2">A. State Direct Appeal</p>
               <div className="space-y-3">
-                <InfoField label="Date Filed" value={memo.direct_appeal_date} />
-                <InfoField label="Issues Raised" value={memo.direct_appeal_issues} />
+                <InfoField label="Date Filed" value={memo.direct_appeal_date} field="direct_appeal_date" />
+                <InfoField label="Issues Raised" value={memo.direct_appeal_issues} field="direct_appeal_issues" />
               </div>
             </div>
           )}
@@ -215,8 +336,8 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <div className="mb-4">
               <p className="text-sm font-semibold text-foreground mb-2">Petition for Review</p>
               <div className="space-y-3">
-                <InfoField label="Date Filed" value={memo.petition_for_review_date} />
-                <InfoField label="Issues Raised" value={memo.petition_for_review_issues} />
+                <InfoField label="Date Filed" value={memo.petition_for_review_date} field="petition_for_review_date" />
+                <InfoField label="Issues Raised" value={memo.petition_for_review_issues} field="petition_for_review_issues" />
               </div>
             </div>
           )}
@@ -225,8 +346,8 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
             <div className="mb-4">
               <p className="text-sm font-semibold text-foreground mb-2">B. Habeas Petitions</p>
               <div className="space-y-3">
-                <InfoField label="Date Filed" value={memo.habeas_petition_date} />
-                <InfoField label="Issues Raised" value={memo.habeas_petition_issues} />
+                <InfoField label="Date Filed" value={memo.habeas_petition_date} field="habeas_petition_date" />
+                <InfoField label="Issues Raised" value={memo.habeas_petition_issues} field="habeas_petition_issues" />
               </div>
             </div>
           )}
@@ -237,8 +358,8 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
       {(memo.prosecution_presented || memo.defense_presented) && (
         <div className="mb-6">
           <div className="grid md:grid-cols-2 gap-3">
-            <InfoField label="Prosecution Presented" value={memo.prosecution_presented} />
-            <InfoField label="Defense Presented" value={memo.defense_presented} />
+            <InfoField label="Prosecution Presented" value={memo.prosecution_presented} field="prosecution_presented" />
+            <InfoField label="Defense Presented" value={memo.defense_presented} field="defense_presented" />
           </div>
         </div>
       )}
