@@ -36,6 +36,7 @@ export default function CaseDetails() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [lawmaticsMatterId, setLawmaticsMatterId] = useState("");
   const [transferring, setTransferring] = useState(false);
+  const [currentStageName, setCurrentStageName] = useState<string>("");
 
   useEffect(() => {
     checkAuth();
@@ -70,6 +71,19 @@ export default function CaseDetails() {
 
     if (!error && data) {
       setCaseData(data);
+      
+      // Fetch stage name
+      if (data.stage_id) {
+        const { data: stageData } = await supabase
+          .from("pipeline_stages")
+          .select("name")
+          .eq("id", data.stage_id)
+          .single();
+        
+        if (stageData) {
+          setCurrentStageName(stageData.name);
+        }
+      }
     } else if (error) {
       toast({
         title: "Error",
@@ -439,33 +453,35 @@ export default function CaseDetails() {
                       </div>
                     )}
 
-                    {/* Lawmatics Transfer */}
-                    <div className="border-t pt-6">
-                      <h3 className="text-lg font-semibold mb-4">Transfer to Lawmatics</h3>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="lawmatics-matter-id">Lawmatics Matter ID</Label>
-                          <Input
-                            id="lawmatics-matter-id"
-                            placeholder="Enter Matter ID"
-                            value={lawmaticsMatterId}
-                            onChange={(e) => setLawmaticsMatterId(e.target.value)}
-                            disabled={transferring}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Enter the Lawmatics Matter ID to link this case for transfer
-                          </p>
+                    {/* Lawmatics Transfer - Only for Advocacy Ready stage */}
+                    {currentStageName.toLowerCase() === "advocacy ready" && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold mb-4">Transfer to Lawmatics</h3>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="lawmatics-matter-id">Lawmatics Matter ID</Label>
+                            <Input
+                              id="lawmatics-matter-id"
+                              placeholder="Enter Matter ID"
+                              value={lawmaticsMatterId}
+                              onChange={(e) => setLawmaticsMatterId(e.target.value)}
+                              disabled={transferring}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Enter the Lawmatics Matter ID to link this case for transfer
+                            </p>
+                          </div>
+                          <Button
+                            onClick={handleTransferToLawmatics}
+                            disabled={!lawmaticsMatterId.trim() || transferring}
+                            className="w-full"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            {transferring ? "Transferring..." : "Transfer to Lawmatics"}
+                          </Button>
                         </div>
-                        <Button
-                          onClick={handleTransferToLawmatics}
-                          disabled={!lawmaticsMatterId.trim() || transferring}
-                          className="w-full"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          {transferring ? "Transferring..." : "Transfer to Lawmatics"}
-                        </Button>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
