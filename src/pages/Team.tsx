@@ -154,11 +154,11 @@ export default function Team() {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold">JusticeLens</h1>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
                   <Upload className="w-4 h-4 mr-2" />
                   New Case
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/pipeline")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Pipeline
                 </Button>
@@ -267,7 +267,7 @@ export default function Team() {
                       <TableRow
                         key={case_.id}
                         className="cursor-pointer"
-                        onClick={() => navigate("/pipeline")}
+                        onClick={() => navigate("/")}
                       >
                         <TableCell className="font-medium">
                           {case_.client_name || case_.file_name}

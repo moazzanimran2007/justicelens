@@ -327,7 +327,7 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/pipeline")} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
                 <LayoutDashboard className="w-4 h-4" />
                 Pipeline
               </Button>

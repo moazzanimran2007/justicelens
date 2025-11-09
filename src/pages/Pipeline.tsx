@@ -38,7 +38,7 @@ export default function Pipeline() {
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-bold">JusticeLens</h1>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
                   <Upload className="w-4 h-4 mr-2" />
                   New Case
                 </Button>
@@ -68,7 +68,7 @@ export default function Pipeline() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-2">Case Pipeline</h2>
           <p className="text-sm text-muted-foreground">
-            Drag and drop cases between stages to update their status
+            View and manage cases across different stages
           </p>
         </div>
         <KanbanBoard />
