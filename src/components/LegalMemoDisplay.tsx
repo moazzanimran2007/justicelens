@@ -161,6 +161,28 @@ const LegalMemoDisplay = ({ memo }: LegalMemoDisplayProps) => {
         </div>
       )}
 
+      {/* People Mentioned */}
+      {memo.people_mentioned && memo.people_mentioned.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold text-foreground mb-3">People Mentioned in Transcript</h4>
+          <div className="grid md:grid-cols-2 gap-3">
+            {memo.people_mentioned.map((person: any, idx: number) => (
+              <div key={idx} className="p-3 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <p className="text-sm font-semibold text-foreground">{person.name}</p>
+                  <Badge variant="secondary" className="text-xs">
+                    {person.role}
+                  </Badge>
+                </div>
+                {person.context && (
+                  <p className="text-xs text-muted-foreground mt-1">{person.context}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Wrongful Conviction Issues */}
       {memo.wrongful_conviction_issues && memo.wrongful_conviction_issues.length > 0 && (
         <div>

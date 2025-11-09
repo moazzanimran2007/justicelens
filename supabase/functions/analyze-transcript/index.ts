@@ -292,6 +292,72 @@ serve(async (req) => {
       }
     }
 
+    // Extract People Mentioned (always run this for legal memo)
+    let peopleMentioned: any[] = [];
+    if (modules.includes('summary')) {
+      console.log('Extracting people mentioned in transcript...');
+      const peoplePrompt = `Extract ALL people mentioned in this parole hearing transcript. Include names, their roles/relationships to the case (victim, witness, board member, attorney, family member, etc.), and any relevant context about them.`;
+
+      const peopleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: 'You are an expert at extracting names and identifying people from legal transcripts. You MUST use the provided function to return structured data.' },
+            { role: 'user', content: `${peoplePrompt}\n\nTranscript:\n${transcriptText.substring(0, 50000)}` }
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "extract_people",
+              description: "Extract all people mentioned in the transcript",
+              parameters: {
+                type: "object",
+                properties: {
+                  people: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", description: "Full name of the person" },
+                        role: { type: "string", description: "Role or relationship to case (e.g., victim, witness, attorney, board member)" },
+                        context: { type: "string", description: "Brief context about this person or what they did/said" }
+                      },
+                      required: ["name", "role"]
+                    }
+                  }
+                },
+                required: ["people"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "extract_people" } }
+        }),
+      });
+
+      if (peopleResponse.ok) {
+        const peopleData = await peopleResponse.json();
+        const toolCall = peopleData.choices[0].message.tool_calls?.[0];
+        
+        if (toolCall?.function?.arguments) {
+          const extracted = JSON.parse(toolCall.function.arguments);
+          peopleMentioned = extracted.people || [];
+          
+          // Update the legal_memos table with people mentioned
+          if (analysisId) {
+            await supabase
+              .from('legal_memos')
+              .update({ people_mentioned: peopleMentioned })
+              .eq('analysis_id', analysisId);
+          }
+        }
+      }
+    }
+
     // Language Pattern Analysis
     if (modules.includes('language')) {
       console.log('Analyzing language patterns...');
