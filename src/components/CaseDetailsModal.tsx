@@ -19,13 +19,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CommentsSection } from "./CommentsSection";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AssignmentSelector } from "./AssignmentSelector";
 import { PrioritySelector } from "./PrioritySelector";
 import { StageSelector } from "./StageSelector";
 import AnalysisResults from "./AnalysisResults";
-import { X, FileText, Trash2 } from "lucide-react";
+import { X, FileText, Trash2, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CaseDetailsModalProps {
@@ -45,6 +47,8 @@ export const CaseDetailsModal = ({
   const [caseData, setCaseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [lawmaticsMatterId, setLawmaticsMatterId] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     if (isOpen && caseId) {
@@ -95,6 +99,53 @@ export const CaseDetailsModal = ({
         description: "Failed to delete case. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleTransferToLawmatics = async () => {
+    if (!lawmaticsMatterId.trim()) {
+      toast({
+        title: "Matter ID required",
+        description: "Please enter a Lawmatics Matter ID to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('transfer-to-lawmatics', {
+        body: {
+          caseId: caseId,
+          matterId: lawmaticsMatterId.trim(),
+          caseData: {
+            client_name: caseData.client_name,
+            case_number: caseData.case_number,
+            file_name: caseData.file_name,
+            status: caseData.status,
+            priority: caseData.priority,
+            results: caseData.results,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Case transferred to Lawmatics successfully.",
+      });
+
+      setLawmaticsMatterId("");
+    } catch (error: any) {
+      console.error("Error transferring to Lawmatics:", error);
+      toast({
+        title: "Transfer failed",
+        description: error.message || "Failed to transfer case to Lawmatics. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -170,6 +221,33 @@ export const CaseDetailsModal = ({
                   <p className="text-sm text-muted-foreground mt-1">
                     {new Date(caseData.updated_at).toLocaleDateString()}
                   </p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 mt-6">
+                <h3 className="text-sm font-semibold mb-4">Transfer to Lawmatics</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lawmatics-matter-id">Lawmatics Matter ID</Label>
+                    <Input
+                      id="lawmatics-matter-id"
+                      placeholder="Enter Matter ID"
+                      value={lawmaticsMatterId}
+                      onChange={(e) => setLawmaticsMatterId(e.target.value)}
+                      disabled={transferring}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter the Lawmatics Matter ID to link this case for transfer
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleTransferToLawmatics}
+                    disabled={!lawmaticsMatterId.trim() || transferring}
+                    className="w-full"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {transferring ? "Transferring..." : "Transfer to Lawmatics"}
+                  </Button>
                 </div>
               </div>
             </TabsContent>
