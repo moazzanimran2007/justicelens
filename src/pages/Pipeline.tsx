@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ArrowDownUp, CheckSquare, Trash2, X } from "lucide-react";
 import { BulkDeleteDialog } from "@/components/BulkDeleteDialog";
@@ -17,9 +18,16 @@ export default function Pipeline() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [caseStats, setCaseStats] = useState({
+    totalCases: 0,
+    completedCases: 0,
+    urgentCases: 0,
+    highPriorityCases: 0,
+  });
 
   useEffect(() => {
     checkAuth();
+    fetchCaseStats();
   }, []);
 
   const checkAuth = async () => {
@@ -31,6 +39,34 @@ export default function Pipeline() {
     } else {
       setUser(user);
     }
+  };
+
+  const fetchCaseStats = async () => {
+    const { count: totalCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true });
+
+    const { count: completedCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "completed");
+
+    const { count: urgentCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("priority", "urgent");
+
+    const { count: highCount } = await supabase
+      .from("analyses")
+      .select("*", { count: "exact", head: true })
+      .eq("priority", "high");
+
+    setCaseStats({
+      totalCases: totalCount || 0,
+      completedCases: completedCount || 0,
+      urgentCases: urgentCount || 0,
+      highPriorityCases: highCount || 0,
+    });
   };
 
 
@@ -81,34 +117,64 @@ export default function Pipeline() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
-      {/* Hero Section */}
-      <section className="border-b border-border bg-card/30 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-12">
-          <div className="max-w-4xl">
-            <h1 className="text-4xl font-bold text-foreground mb-3 animate-fade-in">
-              Welcome back, {user?.email?.split('@')[0]}
-            </h1>
-            <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              Manage your case pipeline and track progress across all stages
-            </p>
-          </div>
+      <main className="container mx-auto px-4 py-6">
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold mb-2">Case Pipeline</h2>
+          <p className="text-sm text-muted-foreground">View and manage cases across different stages</p>
         </div>
-      </section>
 
-      <main className="container mx-auto px-6 py-8">
+        {/* Case Statistics Overview */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{caseStats.totalCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">All active cases</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Completed</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{caseStats.completedCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {caseStats.totalCases > 0 ? Math.round((caseStats.completedCases / caseStats.totalCases) * 100) : 0}% completion rate
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">High Priority</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{caseStats.highPriorityCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {caseStats.totalCases > 0 ? Math.round((caseStats.highPriorityCases / caseStats.totalCases) * 100) : 0}% of total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Urgent</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">{caseStats.urgentCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {caseStats.totalCases > 0 ? Math.round((caseStats.urgentCases / caseStats.totalCases) * 100) : 0}% of total
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Controls Section */}
-        <div className="mb-8">
+        <div className="mb-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CheckSquare className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Case Pipeline</h2>
-                <p className="text-sm text-muted-foreground">Drag cases between stages or use controls</p>
-              </div>
-            </div>
-            
             <div className="flex items-center gap-3">
               {!selectionMode ? (
                 <>
@@ -162,14 +228,12 @@ export default function Pipeline() {
         </div>
 
         {/* Kanban Board Section */}
-        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <KanbanBoard
-            sortBy={sortBy}
-            selectionMode={selectionMode}
-            selectedCases={selectedCases}
-            onCaseSelect={handleCaseSelect}
-          />
-        </div>
+        <KanbanBoard
+          sortBy={sortBy}
+          selectionMode={selectionMode}
+          selectedCases={selectedCases}
+          onCaseSelect={handleCaseSelect}
+        />
       </main>
 
       <BulkDeleteDialog
