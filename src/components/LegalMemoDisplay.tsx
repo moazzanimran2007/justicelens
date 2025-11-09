@@ -1,13 +1,83 @@
 import { Card } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, ExternalLink, Search, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface LegalMemoDisplayProps {
   memo: any;
+  analysisId?: string;
+  onUpdate?: () => void;
 }
 
-const LegalMemoDisplay = ({ memo }: LegalMemoDisplayProps) => {
+const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps) => {
+  const { toast } = useToast();
+  const [searchingPerson, setSearchingPerson] = useState<string | null>(null);
+
   if (!memo) return null;
+
+  const handleSearchPerson = async (personName: string, personRole: string) => {
+    if (!analysisId) {
+      toast({
+        title: "Error",
+        description: "Analysis ID not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSearchingPerson(personName);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('search-person-info', {
+        body: {
+          analysisId,
+          personName,
+          personRole
+        }
+      });
+
+      if (error) {
+        if (error.message.includes("402") || error.message.includes("credits exhausted")) {
+          toast({
+            title: "⚠️ AI Credits Exhausted",
+            description: "Add credits in Settings → Workspace → Usage to continue.",
+            variant: "destructive",
+            duration: 8000,
+          });
+        } else if (error.message.includes("429") || error.message.includes("Rate limit")) {
+          toast({
+            title: "⏱️ Rate Limit Reached",
+            description: "Please wait a moment and try again.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast({
+        title: "✓ Search Complete",
+        description: `Found information for ${personName}`,
+      });
+
+      // Refresh the memo data
+      if (onUpdate) onUpdate();
+
+    } catch (error) {
+      console.error('Error searching person:', error);
+      toast({
+        title: "Search Failed",
+        description: error instanceof Error ? error.message : "Failed to search for person information",
+        variant: "destructive",
+      });
+    } finally {
+      setSearchingPerson(null);
+    }
+  };
 
   const InfoField = ({ label, value }: { label: string; value: any }) => {
     if (!value || (Array.isArray(value) && value.length === 0)) return null;
@@ -166,19 +236,73 @@ const LegalMemoDisplay = ({ memo }: LegalMemoDisplayProps) => {
         <div className="mb-6">
           <h4 className="text-lg font-semibold text-foreground mb-3">People Mentioned in Transcript</h4>
           <div className="grid md:grid-cols-2 gap-3">
-            {memo.people_mentioned.map((person: any, idx: number) => (
-              <div key={idx} className="p-3 bg-muted/50 rounded-lg border border-border">
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <p className="text-sm font-semibold text-foreground">{person.name}</p>
-                  <Badge variant="secondary" className="text-xs">
-                    {person.role}
-                  </Badge>
+            {memo.people_mentioned.map((person: any, idx: number) => {
+              const additionalInfo = memo.people_additional_info?.find(
+                (info: any) => info.name === person.name
+              );
+              const isSearching = searchingPerson === person.name;
+
+              return (
+                <div key={idx} className="p-3 bg-muted/50 rounded-lg border border-border">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-sm font-semibold text-foreground">{person.name}</p>
+                    <Badge variant="secondary" className="text-xs">
+                      {person.role}
+                    </Badge>
+                  </div>
+                  {person.context && (
+                    <p className="text-xs text-muted-foreground mt-1">{person.context}</p>
+                  )}
+                  
+                  {/* Additional Information Section */}
+                  {additionalInfo && (
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        <strong>Public Information:</strong>
+                      </p>
+                      <p className="text-xs text-foreground mb-2">{additionalInfo.summary}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Searched: {new Date(additionalInfo.searched_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 mt-3">
+                    {!additionalInfo && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                        onClick={() => handleSearchPerson(person.name, person.role)}
+                        disabled={isSearching}
+                      >
+                        {isSearching ? (
+                          <>
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="w-3 h-3 mr-1" />
+                            Search Info
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7"
+                      onClick={() => window.open(`https://ciris.mt.cdcr.ca.gov/search?name=${encodeURIComponent(person.name)}`, '_blank')}
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      CDCR Lookup
+                    </Button>
+                  </div>
                 </div>
-                {person.context && (
-                  <p className="text-xs text-muted-foreground mt-1">{person.context}</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -84,6 +84,7 @@ export type Database = {
           innocence_claims: Json | null
           location_of_crime: string | null
           parole_eligibility_date: string | null
+          people_additional_info: Json | null
           people_mentioned: Json | null
           petition_for_review_date: string | null
           petition_for_review_issues: string[] | null
@@ -126,6 +127,7 @@ export type Database = {
           innocence_claims?: Json | null
           location_of_crime?: string | null
           parole_eligibility_date?: string | null
+          people_additional_info?: Json | null
           people_mentioned?: Json | null
           petition_for_review_date?: string | null
           petition_for_review_issues?: string[] | null
@@ -168,6 +170,7 @@ export type Database = {
           innocence_claims?: Json | null
           location_of_crime?: string | null
           parole_eligibility_date?: string | null
+          people_additional_info?: Json | null
           people_mentioned?: Json | null
           petition_for_review_date?: string | null
           petition_for_review_issues?: string[] | null

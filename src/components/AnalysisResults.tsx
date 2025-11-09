@@ -183,7 +183,25 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
       )}
 
       {/* Legal Memo / Fact Sheet */}
-      {legalMemo && <LegalMemoDisplay memo={legalMemo} />}
+      {legalMemo && (
+        <LegalMemoDisplay 
+          memo={legalMemo} 
+          analysisId={analysisId}
+          onUpdate={() => {
+            // Refetch the legal memo when updated
+            if (analysisId) {
+              supabase
+                .from('legal_memos')
+                .select('*')
+                .eq('analysis_id', analysisId)
+                .single()
+                .then(({ data }) => {
+                  if (data) setLegalMemo(data);
+                });
+            }
+          }}
+        />
+      )}
       
       {/* Legacy Summary Display (if no legal memo available) */}
       {!legalMemo && analysis.summary && (
