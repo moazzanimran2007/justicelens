@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LegalMemoDisplay from "./LegalMemoDisplay";
 import InnocenceScoreCard from "./InnocenceScoreCard";
+import { PeopleMentionedCard } from "./PeopleMentionedCard";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -160,6 +161,27 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
             </div>
           </div>
         </Card>
+      )}
+
+      {/* People Mentioned - Prominent Display */}
+      {legalMemo?.people_mentioned && legalMemo.people_mentioned.length > 0 && (
+        <PeopleMentionedCard
+          people={legalMemo.people_mentioned}
+          additionalInfo={legalMemo.people_additional_info}
+          analysisId={analysisId}
+          onUpdate={() => {
+            if (analysisId) {
+              supabase
+                .from('legal_memos')
+                .select('*')
+                .eq('analysis_id', analysisId)
+                .single()
+                .then(({ data }) => {
+                  if (data) setLegalMemo(data);
+                });
+            }
+          }}
+        />
       )}
 
       {/* Bias Indicators */}
