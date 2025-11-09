@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, LayoutDashboard, Users, FileText, LogOut, Home, Kanban } from "lucide-react";
+import { Brain, LayoutDashboard, Users, FileText, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -40,16 +40,7 @@ export const Header = ({ user }: HeaderProps) => {
               onClick={() => navigate("/")} 
               className="gap-2"
             >
-              <Home className="w-4 h-4" />
-              Dashboard
-            </Button>
-            <Button 
-              variant={isActive("/pipeline") ? "secondary" : "ghost"} 
-              size="sm" 
-              onClick={() => navigate("/pipeline")} 
-              className="gap-2"
-            >
-              <Kanban className="w-4 h-4" />
+              <LayoutDashboard className="w-4 h-4" />
               Pipeline
             </Button>
             <Button 
