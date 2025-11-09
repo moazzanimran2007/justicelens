@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { CaseCard } from "./CaseCard";
-import { CaseDetailsModal } from "./CaseDetailsModal";
 import { useToast } from "@/hooks/use-toast";
 
 interface PipelineStage {
@@ -26,9 +26,9 @@ interface Case {
 }
 
 export const KanbanBoard = () => {
+  const navigate = useNavigate();
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
-  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -68,48 +68,37 @@ export const KanbanBoard = () => {
   };
 
   return (
-    <>
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-12rem)]">
-        {stages.map((stage) => (
-          <div
-            key={stage.id}
-            className="flex-shrink-0 w-80"
-          >
-            <Card className="h-full bg-muted/30">
-              <div className="p-4 border-b">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  <h3 className="font-semibold text-sm">{stage.name}</h3>
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {getCasesForStage(stage.id).length}
-                  </span>
-                </div>
+    <div className="flex gap-4 overflow-x-auto pb-4 min-h-[calc(100vh-12rem)]">
+      {stages.map((stage) => (
+        <div
+          key={stage.id}
+          className="flex-shrink-0 w-80"
+        >
+          <Card className="h-full bg-muted/30">
+            <div className="p-4 border-b">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: stage.color }}
+                />
+                <h3 className="font-semibold text-sm">{stage.name}</h3>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {getCasesForStage(stage.id).length}
+                </span>
               </div>
-              <div className="p-3 space-y-3 max-h-[calc(100vh-16rem)] overflow-y-auto">
-                {getCasesForStage(stage.id).map((caseItem) => (
-                  <CaseCard
-                    key={caseItem.id}
-                    caseItem={caseItem}
-                    onClick={() => setSelectedCase(caseItem)}
-                  />
-                ))}
-              </div>
-            </Card>
-          </div>
-        ))}
-      </div>
-
-      {selectedCase && (
-        <CaseDetailsModal
-          caseId={selectedCase.id}
-          isOpen={!!selectedCase}
-          onClose={() => setSelectedCase(null)}
-          onUpdate={fetchCases}
-        />
-      )}
-    </>
+            </div>
+            <div className="p-3 space-y-3 max-h-[calc(100vh-16rem)] overflow-y-auto">
+              {getCasesForStage(stage.id).map((caseItem) => (
+                <CaseCard
+                  key={caseItem.id}
+                  caseItem={caseItem}
+                  onClick={() => navigate(`/case/${caseItem.id}`)}
+                />
+              ))}
+            </div>
+          </Card>
+        </div>
+      ))}
+    </div>
   );
 };

@@ -9,6 +9,7 @@ import Guide from "./pages/Guide";
 import NotFound from "./pages/NotFound";
 import Pipeline from "./pages/Pipeline";
 import Team from "./pages/Team";
+import CaseDetails from "./pages/CaseDetails";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Pipeline />} />
+          <Route path="/case/:id" element={<CaseDetails />} />
           <Route path="/new-case" element={<Index />} />
           <Route path="/team" element={<Team />} />
           <Route path="/auth" element={<Auth />} />
