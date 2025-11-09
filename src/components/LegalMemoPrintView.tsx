@@ -1,28 +1,39 @@
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 interface LegalMemoPrintViewProps {
-  memoContent: React.ReactNode;
+  memoData: any;
   disabled?: boolean;
 }
 
-export const LegalMemoPrintView = ({ memoContent, disabled }: LegalMemoPrintViewProps) => {
-  const handlePrint = () => {
+export const LegalMemoPrintView = ({ memoData, disabled }: LegalMemoPrintViewProps) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handlePrint = async () => {
     try {
+      setIsGenerating(true);
+      toast.loading("Generating professional PDF format...");
+
+      // Call the edge function to format the memo using AI
+      const { data, error } = await supabase.functions.invoke('format-legal-memo', {
+        body: { memoData }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const { formattedContent } = data;
+
+      // Open print window with formatted content
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         toast.error("Please allow pop-ups to export PDF");
         return;
       }
-
-      const memoElement = document.getElementById('legal-memo-content');
-      if (!memoElement) {
-        toast.error("Legal Memo content not found");
-        return;
-      }
-
-      const content = memoElement.innerHTML;
       
       printWindow.document.write(`
         <!DOCTYPE html>
@@ -124,7 +135,7 @@ export const LegalMemoPrintView = ({ memoContent, disabled }: LegalMemoPrintView
               <p>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
             <div class="memo-content">
-              ${content}
+              ${formattedContent}
             </div>
           </body>
         </html>
@@ -140,10 +151,14 @@ export const LegalMemoPrintView = ({ memoContent, disabled }: LegalMemoPrintView
         }, 250);
       };
       
-      toast.success("Print dialog opened");
+      toast.dismiss();
+      toast.success("Print dialog opened - Ready to save as PDF");
     } catch (error) {
       console.error('Error printing:', error);
-      toast.error("Failed to open print dialog");
+      toast.dismiss();
+      toast.error(error instanceof Error ? error.message : "Failed to generate PDF");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -153,10 +168,19 @@ export const LegalMemoPrintView = ({ memoContent, disabled }: LegalMemoPrintView
       size="sm"
       className="gap-2"
       onClick={handlePrint}
-      disabled={disabled}
+      disabled={disabled || isGenerating}
     >
-      <Download className="w-4 h-4" />
-      Export PDF
+      {isGenerating ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Generating...
+        </>
+      ) : (
+        <>
+          <Download className="w-4 h-4" />
+          Export PDF
+        </>
+      )}
     </Button>
   );
 };

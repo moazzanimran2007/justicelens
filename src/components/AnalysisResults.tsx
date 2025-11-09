@@ -270,7 +270,7 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
                     </h3>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
-                    <LegalMemoPrintView memoContent={null} />
+                    <LegalMemoPrintView memoData={legalMemo} disabled={!legalMemo || loadingMemo} />
                   </div>
                 </div>
               </AccordionTrigger>
