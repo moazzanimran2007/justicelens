@@ -1,19 +1,74 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft, BookOpen } from "lucide-react";
+import { AlertCircle, Brain, FileText, BarChart3, Download, ArrowLeft, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 
 interface AnalysisResultsProps {
   analysis: any;
   onNewAnalysis: () => void;
 }
 
+const BiasCategory = ({ category, getSeverityColor }: { category: any; getSeverityColor: (s: string) => "default" | "destructive" | "outline" | "secondary" | "success" | "warning" }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const hasOccurrences = category.occurrences && category.occurrences.length > 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="font-medium text-foreground">{category.type}</span>
+          <Badge variant={getSeverityColor(category.severity)}>
+            {category.severity}
+          </Badge>
+        </div>
+        <span className="text-sm text-muted-foreground">
+          {category.count} occurrences
+        </span>
+      </div>
+      <Progress 
+        value={(category.count / 15) * 100} 
+        className="h-2"
+      />
+      
+      {hasOccurrences && (
+        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-2">
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full justify-between text-xs hover:bg-muted"
+            >
+              <span>View occurrences with page locations</span>
+              {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2">
+            {category.occurrences.map((occurrence: any, occIdx: number) => (
+              <div key={occIdx} className="p-3 bg-muted/50 rounded-lg border-l-4 border-accent text-sm">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <span className="font-semibold text-accent text-xs">{occurrence.page}</span>
+                  {occurrence.context && (
+                    <span className="text-xs text-muted-foreground italic">{occurrence.context}</span>
+                  )}
+                </div>
+                <p className="text-foreground italic">"{occurrence.quote}"</p>
+              </div>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  );
+};
+
 const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
   const navigate = useNavigate();
   
-  const getSeverityColor = (severity: string) => {
+  const getSeverityColor = (severity: string): "default" | "destructive" | "outline" | "secondary" | "success" | "warning" => {
     switch (severity) {
       case "high":
         return "destructive";
@@ -90,23 +145,7 @@ const AnalysisResults = ({ analysis, onNewAnalysis }: AnalysisResultsProps) => {
               </p>
               <div className="space-y-4">
                 {analysis.biasIndicators.categories?.map((category: any, idx: number) => (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-foreground">{category.type}</span>
-                        <Badge variant={getSeverityColor(category.severity)}>
-                          {category.severity}
-                        </Badge>
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {category.count} occurrences
-                      </span>
-                    </div>
-                    <Progress 
-                      value={(category.count / 15) * 100} 
-                      className="h-2"
-                    />
-                  </div>
+                  <BiasCategory key={idx} category={category} getSeverityColor={getSeverityColor} />
                 ))}
               </div>
             </div>

@@ -109,7 +109,7 @@ serve(async (req) => {
     // Bias & Fairness Audit
     if (modules.includes('bias')) {
       console.log('Analyzing bias indicators...');
-      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past.`;
+      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past. For each example found, try to identify the approximate page number or section where it appears in the transcript.`;
 
       const biasResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -127,7 +127,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "analyze_bias",
-              description: "Analyze transcript for bias and fairness issues",
+              description: "Analyze transcript for bias and fairness issues with location information",
               parameters: {
                 type: "object",
                 properties: {
@@ -140,9 +140,20 @@ serve(async (req) => {
                         type: { type: "string" },
                         count: { type: "number" },
                         severity: { type: "string", enum: ["low", "moderate", "high"] },
-                        examples: { type: "array", items: { type: "string" } }
+                        occurrences: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              quote: { type: "string", description: "The problematic quote from the transcript" },
+                              page: { type: "string", description: "Page number or section reference (e.g., 'Page 5', 'Beginning', 'Middle')" },
+                              context: { type: "string", description: "Brief context about who said it or the situation" }
+                            },
+                            required: ["quote", "page"]
+                          }
+                        }
                       },
-                      required: ["type", "count", "severity", "examples"]
+                      required: ["type", "count", "severity", "occurrences"]
                     }
                   },
                   overall_assessment: { type: "string" }
