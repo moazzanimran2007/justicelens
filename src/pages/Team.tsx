@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Upload, LayoutDashboard, Users, Pencil, Check, X } from "lucide-react";
-import { NotificationBell } from "@/components/NotificationBell";
+import { Pencil, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { Header } from "@/components/Header";
 
 interface TeamMember {
   id: string;
@@ -165,10 +165,6 @@ export default function Team() {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const getInitials = (name: string | null, email: string) => {
     if (name) {
@@ -232,38 +228,8 @@ export default function Team() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">JusticeLens</h1>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Pipeline
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  New Case
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Users className="w-4 h-4 mr-2" />
-                  Team
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationBell />
-              <span className="text-sm text-muted-foreground">{user?.email}</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+      <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">

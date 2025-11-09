@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { LogOut, Upload, LayoutDashboard, Users, ArrowDownUp, CheckSquare, Trash2, X } from "lucide-react";
-import { NotificationBell } from "@/components/NotificationBell";
+import { ArrowDownUp, CheckSquare, Trash2, X } from "lucide-react";
 import { BulkDeleteDialog } from "@/components/BulkDeleteDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Header } from "@/components/Header";
 
 export default function Pipeline() {
   const navigate = useNavigate();
@@ -33,10 +33,6 @@ export default function Pipeline() {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const toggleSelectionMode = () => {
     setSelectionMode(!selectionMode);
@@ -82,40 +78,8 @@ export default function Pipeline() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">JusticeLens</h1>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm">
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Pipeline
-                </Button>
-
-                <Button variant="ghost" size="sm" onClick={() => navigate("/new-case")}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  New Case
-                </Button>
-
-                <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
-                  <Users className="w-4 h-4 mr-2" />
-                  Team
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationBell />
-              <span className="text-sm text-muted-foreground">{user?.email}</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+      <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">

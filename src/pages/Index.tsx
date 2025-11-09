@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, FileText, AlertCircle, Brain, LogOut, LayoutDashboard, Users } from "lucide-react";
+import { Upload, FileText, AlertCircle, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -10,7 +10,7 @@ import MultiFileUpload from "@/components/MultiFileUpload";
 import ModuleSelector from "@/components/ModuleSelector";
 import AnalysisResults from "@/components/AnalysisResults";
 import { extractTextFromPdf } from "@/lib/pdf-text";
-import { NotificationBell } from "@/components/NotificationBell";
+import { Header } from "@/components/Header";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -66,10 +66,6 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
 
   const handleModuleToggle = (module: string) => {
     setSelectedModules(prev =>
@@ -328,38 +324,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Brain className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">JusticeLens</h1>
-                <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2">
-                <LayoutDashboard className="w-4 h-4" />
-                Pipeline
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/team")} className="gap-2">
-                <Users className="w-4 h-4" />
-                Team
-              </Button>
-              <NotificationBell />
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header user={user} />
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-12">
