@@ -7,6 +7,57 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to calculate innocence score
+function calculateInnocenceScore(data: any): number {
+  let score = 0;
+
+  // 1. Innocence Claims Score (30 points max)
+  if (data.innocenceClaims) {
+    const claimCount = data.innocenceClaims.count || 0;
+    const claimScore = Math.min(claimCount * 5, 30);
+    score += claimScore;
+  }
+
+  // 2. Wrongful Conviction Indicators (35 points max)
+  if (data.legalMemo?.wrongful_conviction_issues) {
+    const issueCount = data.legalMemo.wrongful_conviction_issues.length;
+    const convictionScore = Math.min(issueCount * 7, 35);
+    score += convictionScore;
+  }
+
+  // 3. Bias Score Impact (25 points max)
+  if (data.biasIndicators?.categories) {
+    const totalBiasCount = data.biasIndicators.categories.reduce((sum: number, cat: any) => {
+      const multiplier = cat.severity === "high" ? 2 : cat.severity === "moderate" ? 1.5 : 1;
+      return sum + (cat.count * multiplier);
+    }, 0);
+    const biasScore = Math.min(totalBiasCount * 2, 25);
+    score += biasScore;
+  }
+
+  // 4. Evidence Quality Assessment (10 points max)
+  if (data.legalMemo?.evidence_used_to_convict) {
+    const evidenceCount = data.legalMemo.evidence_used_to_convict.length;
+    if (evidenceCount <= 2) {
+      score += 10;
+    } else if (evidenceCount <= 4) {
+      score += 6;
+    } else {
+      score += 3;
+    }
+  }
+
+  return Math.min(Math.round(score), 100);
+}
+
+// Helper function to determine priority based on score
+function getPriorityFromScore(score: number): string {
+  if (score > 80) return 'urgent';
+  if (score >= 66) return 'high';
+  if (score >= 36) return 'medium';
+  return 'low';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -500,12 +551,19 @@ serve(async (req) => {
       }
     }
 
-    // Update analysis with results
+    // Calculate innocence score and determine priority
+    const innocenceScore = calculateInnocenceScore(results);
+    const priority = getPriorityFromScore(innocenceScore);
+    
+    console.log(`Calculated innocence score: ${innocenceScore}, setting priority: ${priority}`);
+
+    // Update analysis with results and priority
     const { error: updateError } = await supabase
       .from('analyses')
       .update({
         status: 'completed',
-        results: results
+        results: results,
+        priority: priority
       })
       .eq('id', analysisId);
 
