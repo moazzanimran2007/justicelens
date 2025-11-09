@@ -89,24 +89,41 @@ export const KanbanBoard = ({
   };
 
   const fetchCases = async () => {
-    const { data, error } = await supabase
+    const { data: analyses, error } = await supabase
       .from("analyses")
-      .select(`
-        *,
-        assignee:profiles!analyses_assigned_to_fkey(full_name, nickname)
-      `)
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (error) {
       toast({ title: "Error loading cases", variant: "destructive" });
       return;
     }
-    // Transform data to handle assignee as single object
-    const transformedData = data?.map(item => ({
+
+    // Build assignee map client-side to avoid FK join issues
+    const assigneeIds = Array.from(
+      new Set((analyses || []).map((a: any) => a.assigned_to).filter(Boolean))
+    ) as string[];
+
+    let profilesMap: Record<string, { full_name: string | null; nickname: string | null }> = {};
+    if (assigneeIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, nickname")
+        .in("id", assigneeIds);
+
+      if (!profilesError && profiles) {
+        profilesMap = Object.fromEntries(
+          profiles.map((p: any) => [p.id, { full_name: p.full_name, nickname: p.nickname }])
+        );
+      }
+    }
+
+    const transformed = (analyses || []).map((item: any) => ({
       ...item,
-      assignee: Array.isArray(item.assignee) && item.assignee.length > 0 ? item.assignee[0] : null
+      assignee: item.assigned_to ? profilesMap[item.assigned_to] ?? null : null,
     }));
-    setCases(transformedData || []);
+
+    setCases(transformed);
   };
 
 
