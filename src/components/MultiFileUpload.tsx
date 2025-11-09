@@ -1,14 +1,16 @@
 import { useCallback } from "react";
-import { Upload, X } from "lucide-react";
+import { Upload, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface MultiFileUploadProps {
   files: File[];
   onFilesSelect: (files: File[]) => void;
+  uploadProgress?: Record<string, number>;
 }
 
-const MultiFileUpload = ({ files, onFilesSelect }: MultiFileUploadProps) => {
+const MultiFileUpload = ({ files, onFilesSelect, uploadProgress = {} }: MultiFileUploadProps) => {
   const { toast } = useToast();
 
   const validateFile = (file: File): boolean => {
@@ -114,27 +116,50 @@ const MultiFileUpload = ({ files, onFilesSelect }: MultiFileUploadProps) => {
           <p className="text-sm font-medium text-foreground">
             Selected files ({files.length}):
           </p>
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between p-3 bg-muted rounded-lg"
-            >
-              <div>
-                <p className="font-medium text-foreground text-sm">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(file.size / 1024).toFixed(2)} KB
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeFile(index)}
-                className="h-8 w-8 p-0"
+          {files.map((file, index) => {
+            const progress = uploadProgress[file.name];
+            const isUploading = progress !== undefined && progress < 100;
+            const isComplete = progress === 100;
+
+            return (
+              <div
+                key={index}
+                className="p-3 bg-muted rounded-lg space-y-2"
               >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground text-sm truncate">{file.name}</p>
+                      {isComplete && (
+                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                  {!isUploading && !isComplete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(index)}
+                      className="h-8 w-8 p-0 flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                {isUploading && (
+                  <div className="space-y-1">
+                    <Progress value={progress} className="h-2" />
+                    <p className="text-xs text-muted-foreground text-right">
+                      {progress}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

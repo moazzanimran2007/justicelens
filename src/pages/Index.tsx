@@ -22,6 +22,7 @@ const Index = () => {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [intakeStageId, setIntakeStageId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -107,6 +108,7 @@ const Index = () => {
     }
 
     setIsUploading(true);
+    setUploadProgress({});
     const allResults: any[] = [];
     const failedFiles: string[] = [];
 
@@ -116,19 +118,30 @@ const Index = () => {
         const file = files[i];
         const fileExt = file.name.split('.').pop();
         
-        toast({
-          title: `Processing file ${i + 1} of ${files.length}`,
-          description: `Uploading ${file.name}...`,
-        });
-
+        // Initialize progress for this file
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
 
         try {
           const filePath = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+          // Simulate upload progress (Supabase storage doesn't support real progress tracking)
+          const progressInterval = setInterval(() => {
+            setUploadProgress(prev => {
+              const currentProgress = prev[file.name] || 0;
+              if (currentProgress < 90) {
+                return { ...prev, [file.name]: currentProgress + 10 };
+              }
+              return prev;
+            });
+          }, 200);
 
           // Upload file to storage
           const { error: uploadError } = await supabase.storage
             .from('transcripts')
             .upload(filePath, file);
+
+          clearInterval(progressInterval);
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
           if (uploadError) throw uploadError;
 
@@ -283,10 +296,11 @@ const Index = () => {
         }
 
         toast({
-          title: "Batch analysis complete",
-          description: `Successfully analyzed ${allResults.length} of ${files.length} file(s)`,
+          title: "✅ Upload & Analysis Complete",
+          description: `Successfully processed ${allResults.length} of ${files.length} file(s)`,
         });
         setFiles([]);
+        setUploadProgress({});
       } else {
         toast({
           title: "All files failed",
@@ -299,6 +313,7 @@ const Index = () => {
       console.error('Analysis error:', error);
       setIsUploading(false);
       setIsAnalyzing(false);
+      setUploadProgress({});
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to analyze transcripts",
@@ -410,7 +425,11 @@ const Index = () => {
           {/* Upload & Analysis Section */}
           {!analysis && (
             <Card className="p-8 border-border shadow-lg">
-              <MultiFileUpload files={files} onFilesSelect={setFiles} />
+              <MultiFileUpload 
+                files={files} 
+                onFilesSelect={setFiles}
+                uploadProgress={uploadProgress}
+              />
               
               {files.length > 0 && (
                 <>
