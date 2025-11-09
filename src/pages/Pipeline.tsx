@@ -81,38 +81,69 @@ export default function Pipeline() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Case Pipeline</h2>
-              <p className="text-sm text-muted-foreground">View and manage cases across different stages</p>
+      {/* Hero Section */}
+      <section className="border-b border-border bg-card/30 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-12">
+          <div className="max-w-4xl">
+            <h1 className="text-4xl font-bold text-foreground mb-3 animate-fade-in">
+              Welcome back, {user?.email?.split('@')[0]}
+            </h1>
+            <p className="text-lg text-muted-foreground animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              Manage your case pipeline and track progress across all stages
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-6 py-8">
+        {/* Controls Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <CheckSquare className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Case Pipeline</h2>
+                <p className="text-sm text-muted-foreground">Drag cases between stages or use controls</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            
+            <div className="flex items-center gap-3">
               {!selectionMode ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={toggleSelectionMode} className="gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="default" 
+                    onClick={toggleSelectionMode} 
+                    className="gap-2 hover-scale"
+                  >
                     <CheckSquare className="w-4 h-4" />
                     Select Cases
                   </Button>
-                  <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Sort by..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-card z-50">
-                      <SelectItem value="created_at">Newest First</SelectItem>
-                      <SelectItem value="innocence_score">Innocence Score</SelectItem>
-                      <SelectItem value="priority">Priority</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card">
+                    <ArrowDownUp className="w-4 h-4 text-muted-foreground" />
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-[180px] border-0 shadow-none focus:ring-0">
+                        <SelectValue placeholder="Sort by..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card z-50">
+                        <SelectItem value="created_at">Newest First</SelectItem>
+                        <SelectItem value="innocence_score">Innocence Score</SelectItem>
+                        <SelectItem value="priority">Priority</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </>
               ) : (
-                <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
-                  <span className="text-sm font-medium">{selectedCases.size} selected</span>
+                <div className="flex items-center gap-3 bg-primary/10 px-6 py-3 rounded-lg border border-primary/20 animate-scale-in">
+                  <span className="text-sm font-semibold text-foreground">
+                    {selectedCases.size} case{selectedCases.size !== 1 ? 's' : ''} selected
+                  </span>
                   <Button
                     variant="destructive"
-                    size="sm"
+                    size="default"
                     onClick={() => setShowDeleteDialog(true)}
                     disabled={selectedCases.size === 0}
                     className="gap-2"
@@ -120,7 +151,7 @@ export default function Pipeline() {
                     <Trash2 className="w-4 h-4" />
                     Delete Selected
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={toggleSelectionMode} className="gap-2">
+                  <Button variant="ghost" size="default" onClick={toggleSelectionMode} className="gap-2">
                     <X className="w-4 h-4" />
                     Cancel
                   </Button>
@@ -129,12 +160,16 @@ export default function Pipeline() {
             </div>
           </div>
         </div>
-        <KanbanBoard
-          sortBy={sortBy}
-          selectionMode={selectionMode}
-          selectedCases={selectedCases}
-          onCaseSelect={handleCaseSelect}
-        />
+
+        {/* Kanban Board Section */}
+        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <KanbanBoard
+            sortBy={sortBy}
+            selectionMode={selectionMode}
+            selectedCases={selectedCases}
+            onCaseSelect={handleCaseSelect}
+          />
+        </div>
       </main>
 
       <BulkDeleteDialog
