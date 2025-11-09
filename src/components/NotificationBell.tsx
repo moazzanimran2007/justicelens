@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ interface Notification {
 }
 
 export const NotificationBell = () => {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -103,6 +105,19 @@ export const NotificationBell = () => {
     }
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    if (notification.case_id) {
+      // Mark as read
+      if (!notification.read) {
+        await markAsRead(notification.id);
+      }
+      // Close popover
+      setOpen(false);
+      // Navigate to case
+      navigate(`/case/${notification.case_id}`);
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -145,7 +160,8 @@ export const NotificationBell = () => {
                   key={notification.id}
                   className={`p-4 hover:bg-muted/50 transition-colors ${
                     !notification.read ? "bg-primary/5" : ""
-                  }`}
+                  } ${notification.case_id ? "cursor-pointer" : ""}`}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -170,7 +186,10 @@ export const NotificationBell = () => {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
                         >
                           <Check className="w-4 h-4" />
                         </Button>
@@ -179,7 +198,10 @@ export const NotificationBell = () => {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }}
                       >
                         <X className="w-4 h-4" />
                       </Button>
