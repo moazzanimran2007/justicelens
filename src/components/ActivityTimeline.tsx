@@ -26,7 +26,28 @@ export const ActivityTimeline = ({ caseId }: ActivityTimelineProps) => {
 
   useEffect(() => {
     fetchActivities();
-    subscribeToActivities();
+    
+    const channel = supabase
+      .channel(`activities:${caseId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "case_activities",
+          filter: `case_id=eq.${caseId}`,
+        },
+        (payload) => {
+          console.log('Activity update received:', payload);
+          fetchActivities();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up activity subscription');
+      supabase.removeChannel(channel);
+    };
   }, [caseId]);
 
   const fetchActivities = async () => {
@@ -45,28 +66,6 @@ export const ActivityTimeline = ({ caseId }: ActivityTimelineProps) => {
     if (!error && data) {
       setActivities(data as any);
     }
-  };
-
-  const subscribeToActivities = () => {
-    const channel = supabase
-      .channel(`activities:${caseId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "case_activities",
-          filter: `case_id=eq.${caseId}`,
-        },
-        () => {
-          fetchActivities();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const getActivityIcon = (type: string) => {
