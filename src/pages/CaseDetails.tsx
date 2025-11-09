@@ -15,13 +15,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CommentsSection } from "@/components/CommentsSection";
 import { AssignmentSelector } from "@/components/AssignmentSelector";
 import { PrioritySelector } from "@/components/PrioritySelector";
 import { StageSelector } from "@/components/StageSelector";
 import { Header } from "@/components/Header";
 import AnalysisResults from "@/components/AnalysisResults";
-import { ArrowLeft, FileText, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, FileText, Trash2, ExternalLink, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CaseDetails() {
@@ -32,6 +34,8 @@ export default function CaseDetails() {
   const [caseData, setCaseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [lawmaticsMatterId, setLawmaticsMatterId] = useState("");
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -106,6 +110,53 @@ export default function CaseDetails() {
         description: "Failed to delete case. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleTransferToLawmatics = async () => {
+    if (!lawmaticsMatterId.trim()) {
+      toast({
+        title: "Matter ID required",
+        description: "Please enter a Lawmatics Matter ID to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTransferring(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('transfer-to-lawmatics', {
+        body: {
+          caseId: id,
+          matterId: lawmaticsMatterId.trim(),
+          caseData: {
+            client_name: caseData.client_name,
+            case_number: caseData.case_number,
+            file_name: caseData.file_name,
+            status: caseData.status,
+            priority: caseData.priority,
+            results: caseData.results,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Case transferred to Lawmatics successfully.",
+      });
+
+      setLawmaticsMatterId("");
+    } catch (error: any) {
+      console.error("Error transferring to Lawmatics:", error);
+      toast({
+        title: "Transfer failed",
+        description: error.message || "Failed to transfer case to Lawmatics. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTransferring(false);
     }
   };
 
@@ -387,6 +438,34 @@ export default function CaseDetails() {
                         </div>
                       </div>
                     )}
+
+                    {/* Lawmatics Transfer */}
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold mb-4">Transfer to Lawmatics</h3>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="lawmatics-matter-id">Lawmatics Matter ID</Label>
+                          <Input
+                            id="lawmatics-matter-id"
+                            placeholder="Enter Matter ID"
+                            value={lawmaticsMatterId}
+                            onChange={(e) => setLawmaticsMatterId(e.target.value)}
+                            disabled={transferring}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Enter the Lawmatics Matter ID to link this case for transfer
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleTransferToLawmatics}
+                          disabled={!lawmaticsMatterId.trim() || transferring}
+                          className="w-full"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          {transferring ? "Transferring..." : "Transfer to Lawmatics"}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
