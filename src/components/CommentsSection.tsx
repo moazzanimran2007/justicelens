@@ -1,12 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Send } from "lucide-react";
-import { MentionsInput, Mention } from "react-mentions";
-import "@/styles/mentions.css";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface Comment {
   id: string;
@@ -36,6 +48,10 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -111,6 +127,46 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
     };
   };
 
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const position = e.target.selectionStart;
+    setNewComment(value);
+    setCursorPosition(position);
+
+    // Check if user typed @ to trigger mentions
+    const textBeforeCursor = value.slice(0, position);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.slice(lastAtIndex + 1);
+      if (!textAfterAt.includes(" ") && textAfterAt.length >= 0) {
+        setMentionSearch(textAfterAt);
+        setShowMentions(true);
+        return;
+      }
+    }
+    
+    setShowMentions(false);
+  };
+
+  const insertMention = (member: TeamMember) => {
+    const textBeforeCursor = newComment.slice(0, cursorPosition);
+    const textAfterCursor = newComment.slice(cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+    
+    const beforeAt = newComment.slice(0, lastAtIndex);
+    const mention = `@[${member.display}](${member.id})`;
+    const newText = beforeAt + mention + " " + textAfterCursor;
+    
+    setNewComment(newText);
+    setShowMentions(false);
+    setMentionSearch("");
+    
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+  };
+
   const extractMentionedUsers = (text: string): string[] => {
     const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
     const userIds: string[] = [];
@@ -147,6 +203,10 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
 
     return parts.length > 0 ? parts : text;
   };
+
+  const filteredMembers = teamMembers.filter((member) =>
+    member.display.toLowerCase().includes(mentionSearch.toLowerCase())
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,24 +288,40 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2">
-        <MentionsInput
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Add a comment... (Type @ to mention someone)"
-          className="mentions-input"
-          style={{
-            control: {
-              minHeight: 80,
-            },
-          }}
-        >
-          <Mention
-            trigger="@"
-            data={teamMembers}
-            className="mentions__mention"
-            displayTransform={(id, display) => `@${display}`}
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            value={newComment}
+            onChange={handleTextareaChange}
+            placeholder="Add a comment... (Type @ to mention someone)"
+            className="min-h-[80px]"
+            maxLength={5000}
           />
-        </MentionsInput>
+          <Popover open={showMentions} onOpenChange={setShowMentions}>
+            <PopoverTrigger asChild>
+              <div className="absolute" style={{ top: 0, left: 0, visibility: "hidden" }} />
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search team members..." value={mentionSearch} />
+                <CommandList>
+                  <CommandEmpty>No team members found.</CommandEmpty>
+                  <CommandGroup>
+                    {filteredMembers.map((member) => (
+                      <CommandItem
+                        key={member.id}
+                        onSelect={() => insertMention(member)}
+                        className="cursor-pointer"
+                      >
+                        @{member.display}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div className="flex justify-between items-center">
           <span className="text-xs text-muted-foreground">
             {newComment.length}/5000
