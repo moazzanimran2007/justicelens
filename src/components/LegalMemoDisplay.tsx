@@ -257,9 +257,16 @@ const LegalMemoDisplay = ({ memo, analysisId, onUpdate }: LegalMemoDisplayProps)
                   {/* Additional Information Section */}
                   {additionalInfo && (
                     <div className="mt-3 pt-3 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        <strong>Public Information:</strong>
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-muted-foreground">
+                          <strong>CDCR-Focused Research:</strong>
+                        </p>
+                        {additionalInfo.auto_searched && (
+                          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                            Auto-searched
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-foreground mb-2">{additionalInfo.summary}</p>
                       <p className="text-xs text-muted-foreground">
                         Searched: {new Date(additionalInfo.searched_at).toLocaleDateString()}

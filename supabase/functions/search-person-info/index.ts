@@ -26,8 +26,23 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Use AI to search for public information about the person
-    const searchPrompt = `Search for publicly available information about a person named "${personName}" who is involved in a legal case as a "${personRole}". Focus on factual, publicly available information from court records, news articles, or public databases. Return a brief summary (2-3 sentences) of what is publicly known about this person in the context of this role.`;
+    // Use AI to search for CDCR-focused public information about the person
+    const searchPrompt = `Search for publicly available information about a person named "${personName}" who is involved in a California legal/corrections case as a "${personRole}". 
+
+PRIORITY FOCUS:
+1. California Department of Corrections and Rehabilitation (CDCR) records
+2. California inmate/parole records
+3. California court records and case information
+4. News articles about California cases
+5. Other public criminal justice records
+
+Return a brief summary (2-3 sentences) focusing on:
+- Any CDCR/California corrections information
+- Court case involvement in California
+- Relevant background in the criminal justice context
+- If no specific information found, state "No public CDCR or California corrections records found"
+
+Be factual and cite the type of source when possible (e.g., "According to California court records..." or "News reports indicate...").`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
