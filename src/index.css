@@ -105,3 +105,39 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for PDF export */
+@media print {
+  /* Hide non-content elements */
+  header,
+  nav,
+  button,
+  .no-print,
+  [data-radix-scroll-area-viewport],
+  aside {
+    display: none !important;
+  }
+
+  /* Show only the legal memo content */
+  body {
+    background: white;
+    color: black;
+  }
+
+  /* Ensure content fits on page */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Page break control */
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Remove unnecessary spacing */
+  .print-compact {
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+}

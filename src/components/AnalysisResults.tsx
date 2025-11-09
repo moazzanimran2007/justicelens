@@ -11,9 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LegalMemoDisplay from "./LegalMemoDisplay";
 import InnocenceScoreCard from "./InnocenceScoreCard";
 import { PeopleMentionedCard } from "./PeopleMentionedCard";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import { toast } from "sonner";
+import { LegalMemoPrintView } from "./LegalMemoPrintView";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -78,7 +76,6 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
   const navigate = useNavigate();
   const [legalMemo, setLegalMemo] = useState<any>(null);
   const [loadingMemo, setLoadingMemo] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     const fetchLegalMemo = async () => {
@@ -112,60 +109,6 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
         return "warning";
       default:
         return "secondary";
-    }
-  };
-
-  const handleExportMemoToPdf = async () => {
-    if (!legalMemo) return;
-    
-    setExportingPdf(true);
-    toast.info("Generating PDF...");
-    
-    try {
-      const memoElement = document.getElementById('legal-memo-content');
-      if (!memoElement) {
-        throw new Error("Legal memo content not found");
-      }
-
-      const canvas = await html2canvas(memoElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        windowWidth: memoElement.scrollWidth,
-        windowHeight: memoElement.scrollHeight
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      const fileName = `legal-memo-${analysisId || 'export'}.pdf`;
-      pdf.save(fileName);
-      toast.success("PDF exported successfully!");
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast.error("Failed to generate PDF. Please try again.");
-    } finally {
-      setExportingPdf(false);
     }
   };
 
@@ -326,40 +269,28 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
                       Legal Memo / Fact Sheet
                     </h3>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleExportMemoToPdf();
-                    }}
-                    disabled={exportingPdf}
-                  >
-                    <Download className="w-4 h-4" />
-                    {exportingPdf ? "Exporting..." : "Export PDF"}
-                  </Button>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <LegalMemoPrintView memoContent={null} />
+                  </div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-6 pb-6">
-                <div id="legal-memo-content">
-                  <LegalMemoDisplay 
-                    memo={legalMemo} 
-                    analysisId={analysisId}
-                    onUpdate={() => {
-                      if (analysisId) {
-                        supabase
-                          .from('legal_memos')
-                          .select('*')
-                          .eq('analysis_id', analysisId)
-                          .single()
-                          .then(({ data }) => {
-                            if (data) setLegalMemo(data);
-                          });
-                      }
-                    }}
-                  />
-                </div>
+                <LegalMemoDisplay 
+                  memo={legalMemo} 
+                  analysisId={analysisId}
+                  onUpdate={() => {
+                    if (analysisId) {
+                      supabase
+                        .from('legal_memos')
+                        .select('*')
+                        .eq('analysis_id', analysisId)
+                        .single()
+                        .then(({ data }) => {
+                          if (data) setLegalMemo(data);
+                        });
+                    }
+                  }}
+                />
               </AccordionContent>
             </Card>
           </AccordionItem>
