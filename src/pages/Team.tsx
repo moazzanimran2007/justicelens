@@ -15,6 +15,7 @@ interface TeamMember {
   id: string;
   email: string;
   full_name: string | null;
+  nickname: string | null;
   case_count: number;
   high_priority_count: number;
   urgent_count: number;
@@ -40,6 +41,7 @@ export default function Team() {
   const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingNickname, setEditingNickname] = useState("");
   const [teamStats, setTeamStats] = useState({
     totalCases: 0,
     totalUrgent: 0,
@@ -81,7 +83,7 @@ export default function Team() {
     // Get all profiles
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, full_name, nickname")
       .order("full_name");
 
     if (profilesError || !profiles) return;
@@ -191,32 +193,38 @@ export default function Team() {
     }
   };
 
-  const handleStartEdit = (memberId: string, currentName: string | null, email: string) => {
+  const handleStartEdit = (memberId: string, currentName: string | null, currentNickname: string | null, email: string) => {
     setEditingMemberId(memberId);
-    setEditingName(currentName || email);
+    setEditingName(currentName || "");
+    setEditingNickname(currentNickname || "");
   };
 
   const handleCancelEdit = () => {
     setEditingMemberId(null);
     setEditingName("");
+    setEditingNickname("");
   };
 
   const handleSaveEdit = async (memberId: string) => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: editingName })
+        .update({ 
+          full_name: editingName || null,
+          nickname: editingNickname || null 
+        })
         .eq("id", memberId);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Team member name updated",
+        description: "Team member information updated",
       });
 
       setEditingMemberId(null);
       setEditingName("");
+      setEditingNickname("");
       fetchTeamData();
     } catch (error: any) {
       toast({
@@ -310,63 +318,77 @@ export default function Team() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     {editingMemberId === member.id ? (
-                      <div className="flex items-center gap-2 flex-1">
-                        <Input
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="h-8 text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveEdit(member.id);
-                          }}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelEdit();
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <>
-                        <CardTitle className="text-base truncate">{member.full_name || member.email}</CardTitle>
-                        {isAdmin && (
+                      <div className="flex flex-col gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            placeholder="Real Name"
+                            className="h-8 text-sm"
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 w-6 p-0"
+                            className="h-8 w-8 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleStartEdit(member.id, member.full_name, member.email);
+                              handleSaveEdit(member.id);
                             }}
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Check className="h-4 w-4" />
                           </Button>
-                        )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCancelEdit();
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Input
+                          value={editingNickname}
+                          onChange={(e) => setEditingNickname(e.target.value)}
+                          placeholder="Nickname"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-base truncate">
+                              {member.nickname ? `${member.nickname} (${member.full_name || member.email})` : member.full_name || member.email}
+                            </CardTitle>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(member.id, member.full_name, member.nickname, member.email);
+                                }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          {!member.nickname && member.full_name && (
+                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                          )}
+                        </div>
                         {member.roles.length > 0 && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs shrink-0">
                             {member.roles.join(", ")}
                           </Badge>
                         )}
                       </>
                     )}
                   </div>
-                  {member.full_name && editingMemberId !== member.id && (
-                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
-                  )}
                 </div>
               </CardHeader>
               <CardContent>
