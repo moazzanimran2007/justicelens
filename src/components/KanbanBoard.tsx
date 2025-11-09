@@ -25,6 +25,10 @@ interface Case {
   updated_at: string;
   status: string;
   results?: any;
+  assignee?: {
+    full_name: string | null;
+    nickname: string | null;
+  };
 }
 
 interface KanbanBoardProps {
@@ -87,14 +91,22 @@ export const KanbanBoard = ({
   const fetchCases = async () => {
     const { data, error } = await supabase
       .from("analyses")
-      .select("*")
+      .select(`
+        *,
+        assignee:profiles(full_name, nickname)
+      `)
       .order("created_at", { ascending: false });
 
     if (error) {
       toast({ title: "Error loading cases", variant: "destructive" });
       return;
     }
-    setCases(data || []);
+    // Transform data to handle assignee as single object
+    const transformedData = data?.map(item => ({
+      ...item,
+      assignee: Array.isArray(item.assignee) ? item.assignee[0] : item.assignee
+    }));
+    setCases(transformedData || []);
   };
 
 

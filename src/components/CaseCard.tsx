@@ -23,6 +23,10 @@ interface CaseCardProps {
     created_at: string;
     status: string;
     results?: any;
+    assignee?: {
+      full_name: string | null;
+      nickname: string | null;
+    };
   };
   onClick: () => void;
   selectionMode?: boolean;
@@ -100,6 +104,11 @@ export const CaseCard = ({
                 </h4>
                 {caseItem.case_number && (
                   <p className="text-xs text-muted-foreground">{caseItem.case_number}</p>
+                )}
+                {caseItem.assignee && (
+                  <p className="text-xs text-muted-foreground">
+                    Assigned to: {caseItem.assignee.nickname || caseItem.assignee.full_name}
+                  </p>
                 )}
               </div>
               {caseItem.priority !== "medium" && (
