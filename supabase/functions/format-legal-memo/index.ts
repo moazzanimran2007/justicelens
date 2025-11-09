@@ -1,4 +1,5 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+// Format Legal Memo with Lovable AI Gateway
+// Uses LOVABLE_API_KEY secret; do not expose on client.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,81 +8,87 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
     const { memoData } = await req.json();
-
     if (!memoData) {
-      throw new Error('Memo data is required');
+      return new Response(JSON.stringify({ error: 'memoData is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Use Lovable AI to format the legal memo professionally
-    const { data: aiData, error: aiError } = await supabaseClient.functions.invoke('ai', {
-      body: {
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a legal document formatting assistant. Format the provided legal memo data into a professional, well-organized HTML document suitable for printing as a PDF. Use proper legal memo formatting standards with clear sections, proper headings, and professional typography. Return ONLY the HTML body content (no <html>, <head>, or <body> tags), ready to be inserted into a document.`
-          },
-          {
-            role: 'user',
-            content: `Format this legal memo data into a professional document:
+    const API_URL = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+    const API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!API_KEY) {
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(JSON.stringify({ error: 'AI gateway not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-${JSON.stringify(memoData, null, 2)}
+    const systemPrompt = `You are a legal document formatting assistant. Format the provided legal memo data into a professional, well-organized HTML fragment suitable for printing as a PDF. Use proper legal memo formatting with clear sections, headings, and professional typography. Return ONLY the HTML body content (no <html>, <head>, or <body> tags). Use semantic tags (h1, h2, h3, p, ul, ol, strong, em, table) and ensure clean, printable structure. Do not invent facts.`;
 
-Requirements:
-1. Use proper legal memo structure
-2. Include clear section headings with uppercase titles
-3. Format dates, names, and case numbers professionally
-4. Present lists in a clear, readable format
-5. Include all available information from the data
-6. Use proper legal terminology
-7. Organize information logically
-8. Return clean HTML with proper semantic tags (h1, h2, h3, p, ul, ol, strong, em)
-9. Do not include any wrapper tags like <html>, <head>, or <body>`
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 4000
-      }
+    const userPrompt = `Format this legal memo into a professional, printable document. Organize by major sections (Client Information; Introduction; Conviction & Sentence Summary; Superior Court Case; Appellate Court Information; Post-Conviction Issues; Case Presentations; People Mentioned; Wrongful Conviction Issues). Use uppercase section headings, concise paragraphs, and lists where appropriate. Include all provided data.
+
+JSON Data:\n\n${JSON.stringify(memoData, null, 2)}`;
+
+    const payload = {
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    };
+
+    const aiResp = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     });
 
-    if (aiError) {
-      console.error('AI formatting error:', aiError);
-      throw new Error(`AI formatting failed: ${aiError.message}`);
+    if (!aiResp.ok) {
+      const text = await aiResp.text();
+      console.error('AI gateway error:', aiResp.status, text);
+      const status = aiResp.status;
+      if (status === 402 || status === 429) {
+        return new Response(JSON.stringify({ error: text || 'AI limits reached' }), {
+          status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ error: 'AI gateway error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const formattedContent = aiData.choices[0].message.content;
-
-    return new Response(
-      JSON.stringify({ formattedContent }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
-
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const aiJson = await aiResp.json();
+    const formattedContent: string | undefined = aiJson?.choices?.[0]?.message?.content;
+    if (!formattedContent) {
+      console.error('AI response missing content:', aiJson);
+      return new Response(JSON.stringify({ error: 'AI returned no content' }), {
         status: 500,
-      }
-    );
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ formattedContent }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    console.error('format-legal-memo error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
