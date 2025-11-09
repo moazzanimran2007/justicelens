@@ -11,6 +11,10 @@ interface ActivityItem {
   description: string;
   created_at: string;
   metadata: any;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  };
 }
 
 interface ActivityTimelineProps {
@@ -28,12 +32,18 @@ export const ActivityTimeline = ({ caseId }: ActivityTimelineProps) => {
   const fetchActivities = async () => {
     const { data, error } = await supabase
       .from("case_activities")
-      .select("*")
+      .select(`
+        *,
+        profiles!case_activities_user_id_fkey (
+          full_name,
+          email
+        )
+      `)
       .eq("case_id", caseId)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setActivities(data);
+      setActivities(data as any);
     }
   };
 
@@ -86,10 +96,16 @@ export const ActivityTimeline = ({ caseId }: ActivityTimelineProps) => {
               </div>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{activity.description}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
-                  </p>
+                  <p className="text-sm">{activity.description}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      {activity.profiles?.full_name || activity.profiles?.email || "System"}
+                    </p>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-xs">
                   {activity.activity_type.replace("_", " ")}

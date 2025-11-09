@@ -13,6 +13,10 @@ interface Comment {
   comment_text: string;
   created_at: string;
   updated_at: string;
+  profiles?: {
+    full_name: string | null;
+    email: string;
+  };
 }
 
 interface CommentsSectionProps {
@@ -40,12 +44,18 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
   const fetchComments = async () => {
     const { data, error } = await supabase
       .from("case_comments")
-      .select("*")
+      .select(`
+        *,
+        profiles!case_comments_user_id_fkey (
+          full_name,
+          email
+        )
+      `)
       .eq("case_id", caseId)
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      setComments(data);
+      setComments(data as any);
     }
   };
 
@@ -108,8 +118,10 @@ export const CommentsSection = ({ caseId }: CommentsSectionProps) => {
               }`}
             >
               <div className="flex items-start justify-between mb-2">
-                <span className="text-xs text-muted-foreground">
-                  {comment.user_id === currentUserId ? "You" : "Team member"}
+                <span className="text-xs font-medium">
+                  {comment.user_id === currentUserId 
+                    ? "You" 
+                    : (comment.profiles?.full_name || comment.profiles?.email || "Team member")}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}

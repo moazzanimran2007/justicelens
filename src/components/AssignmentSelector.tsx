@@ -20,6 +20,7 @@ interface AssignmentSelectorProps {
 interface TeamMember {
   id: string;
   email: string;
+  full_name: string | null;
 }
 
 export const AssignmentSelector = ({
@@ -36,19 +37,13 @@ export const AssignmentSelector = ({
   }, []);
 
   const fetchTeamMembers = async () => {
-    // For now, we'll get users from user_roles table
-    // In a production app, you'd want a proper profiles table
     const { data, error } = await supabase
-      .from("user_roles")
-      .select("user_id");
+      .from("profiles")
+      .select("id, email, full_name")
+      .order("full_name");
 
     if (!error && data) {
-      // Get unique user IDs
-      const userIds = [...new Set(data.map((r) => r.user_id))];
-      
-      // In production, you'd fetch user profiles here
-      // For now, we'll just use the user IDs
-      setTeamMembers(userIds.map(id => ({ id, email: id.substring(0, 8) })));
+      setTeamMembers(data);
     }
   };
 
@@ -78,7 +73,7 @@ export const AssignmentSelector = ({
         <SelectItem value="unassigned">Unassigned</SelectItem>
         {teamMembers.map((member) => (
           <SelectItem key={member.id} value={member.id}>
-            {member.email}
+            {member.full_name || member.email}
           </SelectItem>
         ))}
       </SelectContent>
