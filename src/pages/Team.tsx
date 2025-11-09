@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Check, X, Shield, UserCog, Users as UsersIcon } from "lucide-react";
+import { Pencil, Check, X, Shield, UserCog, Users as UsersIcon, Upload, Image as ImageIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,11 +61,13 @@ export default function Team() {
   const [teamSettings, setTeamSettings] = useState({
     id: "",
     team_name: "Justice Team",
-    team_icon: "⚖️"
+    team_icon: "⚖️",
+    logo_url: null as string | null
   });
   const [editingTeamSettings, setEditingTeamSettings] = useState(false);
   const [editingTeamSettingsName, setEditingTeamSettingsName] = useState("");
   const [editingTeamSettingsIcon, setEditingTeamSettingsIcon] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   useEffect(() => {
     checkAuth();
     fetchTeamData();
@@ -193,7 +195,120 @@ export default function Team() {
       setTeamSettings({
         id: data.id,
         team_name: data.team_name,
-        team_icon: data.team_icon
+        team_icon: data.team_icon,
+        logo_url: data.logo_url
+      });
+    }
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please upload an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingLogo(true);
+
+    try {
+      // Delete old logo if exists
+      if (teamSettings.logo_url) {
+        const oldPath = teamSettings.logo_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage.from('team-logos').remove([oldPath]);
+        }
+      }
+
+      // Upload new logo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `team-logo-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('team-logos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('team-logos')
+        .getPublicUrl(fileName);
+
+      // Update team settings
+      const { error: updateError } = await supabase
+        .from('team_settings')
+        .update({ logo_url: publicUrl })
+        .eq('id', teamSettings.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Success",
+        description: "Team logo updated successfully"
+      });
+
+      fetchTeamSettings();
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload logo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!teamSettings.logo_url) return;
+
+    try {
+      // Delete from storage
+      const path = teamSettings.logo_url.split('/').pop();
+      if (path) {
+        await supabase.storage.from('team-logos').remove([path]);
+      }
+
+      // Update team settings
+      const { error } = await supabase
+        .from('team_settings')
+        .update({ logo_url: null })
+        .eq('id', teamSettings.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Team logo removed"
+      });
+
+      fetchTeamSettings();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
       });
     }
   };
@@ -371,7 +486,54 @@ export default function Team() {
                   </div>
                 ) : (
                   <>
-                    <div className="text-4xl">{teamSettings.team_icon}</div>
+                    {teamSettings.logo_url ? (
+                      <div className="relative group">
+                        <img 
+                          src={teamSettings.logo_url} 
+                          alt="Team Logo" 
+                          className="w-16 h-16 object-contain rounded-lg border border-border"
+                        />
+                        {isAdmin && (
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                            <label htmlFor="logo-upload" className="cursor-pointer">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" asChild>
+                                <span>
+                                  <Upload className="h-3 w-3" />
+                                </span>
+                              </Button>
+                            </label>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-7 w-7 p-0 text-white hover:text-white"
+                              onClick={handleRemoveLogo}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative group">
+                        <div className="text-4xl">{teamSettings.team_icon}</div>
+                        {isAdmin && (
+                          <label 
+                            htmlFor="logo-upload" 
+                            className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer"
+                          >
+                            <Upload className="h-5 w-5 text-white" />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                      disabled={!isAdmin || uploadingLogo}
+                    />
                     <div>
                       <h2 className="text-2xl font-bold flex items-center gap-2">
                         {teamSettings.team_name}
