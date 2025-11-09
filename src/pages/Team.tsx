@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Check, X, Shield, UserCog, Users as UsersIcon, Upload, Image as ImageIcon } from "lucide-react";
@@ -616,6 +616,7 @@ export default function Team() {
           {teamMembers.map(member => <Card key={member.id} className={`cursor-pointer transition-colors hover:border-primary ${selectedMember === member.id ? "border-primary bg-primary/5" : ""}`} onClick={() => setSelectedMember(member.id)}>
               <CardHeader className="flex flex-row items-center gap-4 pb-3">
                 <Avatar>
+                  <AvatarImage src={member.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary">
                     {getInitials(member.full_name, member.email)}
                   </AvatarFallback>
