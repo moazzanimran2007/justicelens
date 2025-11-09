@@ -1,4 +1,6 @@
 
+-- Migration: 20251109175039
+
 -- Migration: 20251109004617
 
 -- Migration: 20251108225102
@@ -1156,3 +1158,221 @@ USING (
   OR auth.uid() = user_id 
   OR auth.uid() = assigned_to
 );
+
+
+-- Migration: 20251109181140
+-- Fix overly permissive RLS policy on analyses table
+-- Drop the policy that allows all authenticated users to view all cases
+DROP POLICY IF EXISTS "Authenticated users can view all cases" ON public.analyses;
+
+-- Create restrictive policy that only allows users to see their own cases or assigned cases
+CREATE POLICY "Users can view their own cases or assigned cases"
+ON public.analyses FOR SELECT
+TO authenticated
+USING (
+  auth.uid() = user_id 
+  OR auth.uid() = assigned_to 
+  OR has_role(auth.uid(), 'admin'::app_role)
+);
+
+-- Migration: 20251109190206
+-- Drop the existing restrictive SELECT policy
+DROP POLICY IF EXISTS "Users can view their own cases or assigned cases" ON public.analyses;
+
+-- Create a new policy that allows all authenticated users to view all cases
+CREATE POLICY "All authenticated users can view cases"
+ON public.analyses
+FOR SELECT
+TO authenticated
+USING (true);
+
+-- Keep other policies unchanged (INSERT, UPDATE, DELETE remain restricted);
+
+-- Migration: 20251109195925
+-- Allow admins to manage pipeline stages
+CREATE POLICY "Admins can insert pipeline stages"
+ON public.pipeline_stages
+FOR INSERT
+TO authenticated
+WITH CHECK (has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can update pipeline stages"
+ON public.pipeline_stages
+FOR UPDATE
+TO authenticated
+USING (has_role(auth.uid(), 'admin'))
+WITH CHECK (has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can delete pipeline stages"
+ON public.pipeline_stages
+FOR DELETE
+TO authenticated
+USING (has_role(auth.uid(), 'admin'));
+
+-- Migration: 20251109221659
+-- Fix log_stage_change function to handle system-initiated changes
+CREATE OR REPLACE FUNCTION public.log_stage_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  old_stage_name TEXT;
+  new_stage_name TEXT;
+  old_priority TEXT;
+  new_priority TEXT;
+  activity_user_id UUID;
+BEGIN
+  -- Determine user_id: use auth.uid() if available, otherwise use case owner
+  activity_user_id := COALESCE(auth.uid(), NEW.user_id);
+  
+  -- Log case creation (INSERT)
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+    VALUES (
+      NEW.id,
+      activity_user_id,
+      'case_created',
+      'Case created',
+      jsonb_build_object('client_name', NEW.client_name, 'file_name', NEW.file_name)
+    );
+  END IF;
+  
+  -- Log stage changes (UPDATE)
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.stage_id IS DISTINCT FROM NEW.stage_id THEN
+      SELECT name INTO old_stage_name FROM public.pipeline_stages WHERE id = OLD.stage_id;
+      SELECT name INTO new_stage_name FROM public.pipeline_stages WHERE id = NEW.stage_id;
+      
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'stage_changed',
+        'Stage changed from ' || COALESCE(old_stage_name, 'None') || ' to ' || new_stage_name,
+        jsonb_build_object('old_stage', old_stage_name, 'new_stage', new_stage_name)
+      );
+    END IF;
+    
+    -- Log assignment changes
+    IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'assignment_changed',
+        CASE 
+          WHEN NEW.assigned_to IS NULL THEN 'Case unassigned'
+          ELSE 'Case assigned'
+        END,
+        jsonb_build_object('assigned_to', NEW.assigned_to)
+      );
+    END IF;
+    
+    -- Log priority changes (including automatic ones from AI analysis)
+    IF OLD.priority IS DISTINCT FROM NEW.priority THEN
+      old_priority := COALESCE(OLD.priority, 'none');
+      new_priority := COALESCE(NEW.priority, 'none');
+      
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'priority_changed',
+        CASE 
+          WHEN auth.uid() IS NULL THEN 'Priority auto-set to ' || new_priority || ' based on analysis'
+          ELSE 'Priority changed from ' || old_priority || ' to ' || new_priority
+        END,
+        jsonb_build_object('old_priority', old_priority, 'new_priority', new_priority, 'auto_set', auth.uid() IS NULL)
+      );
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$;
+
+-- Migration: 20251109221728
+-- Fix log_stage_change function to handle system-initiated changes
+CREATE OR REPLACE FUNCTION public.log_stage_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  old_stage_name TEXT;
+  new_stage_name TEXT;
+  old_priority TEXT;
+  new_priority TEXT;
+  activity_user_id UUID;
+BEGIN
+  -- Determine user_id: use auth.uid() if available, otherwise use case owner
+  activity_user_id := COALESCE(auth.uid(), NEW.user_id);
+  
+  -- Log case creation (INSERT)
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+    VALUES (
+      NEW.id,
+      activity_user_id,
+      'case_created',
+      'Case created',
+      jsonb_build_object('client_name', NEW.client_name, 'file_name', NEW.file_name)
+    );
+  END IF;
+  
+  -- Log stage changes (UPDATE)
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.stage_id IS DISTINCT FROM NEW.stage_id THEN
+      SELECT name INTO old_stage_name FROM public.pipeline_stages WHERE id = OLD.stage_id;
+      SELECT name INTO new_stage_name FROM public.pipeline_stages WHERE id = NEW.stage_id;
+      
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'stage_changed',
+        'Stage changed from ' || COALESCE(old_stage_name, 'None') || ' to ' || new_stage_name,
+        jsonb_build_object('old_stage', old_stage_name, 'new_stage', new_stage_name)
+      );
+    END IF;
+    
+    -- Log assignment changes
+    IF OLD.assigned_to IS DISTINCT FROM NEW.assigned_to THEN
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'assignment_changed',
+        CASE 
+          WHEN NEW.assigned_to IS NULL THEN 'Case unassigned'
+          ELSE 'Case assigned'
+        END,
+        jsonb_build_object('assigned_to', NEW.assigned_to)
+      );
+    END IF;
+    
+    -- Log priority changes (including automatic ones from AI analysis)
+    IF OLD.priority IS DISTINCT FROM NEW.priority THEN
+      old_priority := COALESCE(OLD.priority, 'none');
+      new_priority := COALESCE(NEW.priority, 'none');
+      
+      INSERT INTO public.case_activities (case_id, user_id, activity_type, description, metadata)
+      VALUES (
+        NEW.id,
+        activity_user_id,
+        'priority_changed',
+        CASE 
+          WHEN auth.uid() IS NULL THEN 'Priority auto-set to ' || new_priority || ' based on analysis'
+          ELSE 'Priority changed from ' || old_priority || ' to ' || new_priority
+        END,
+        jsonb_build_object('old_priority', old_priority, 'new_priority', new_priority, 'auto_set', auth.uid() IS NULL)
+      );
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$function$;
