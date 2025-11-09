@@ -58,12 +58,16 @@ export const AssignmentSelector = ({
       .eq("id", caseId);
 
     if (error) {
-      toast({ title: "Error assigning case", variant: "destructive" });
+      toast({ 
+        title: "Error assigning case",
+        description: error.message,
+        variant: "destructive" 
+      });
       return;
     }
 
     setSelectedUser(userId);
-    toast({ title: userId ? "Case assigned" : "Case unassigned" });
+    toast({ title: userId ? "Case assigned successfully" : "Case unassigned" });
     onUpdate();
   };
 
