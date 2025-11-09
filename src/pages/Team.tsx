@@ -454,11 +454,11 @@ export default function Team() {
 
           <Card>
             <CardHeader className="pb-3">
-              <p className="text-sm font-medium text-muted-foreground">Your Cases</p>
+              <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{teamStats.totalCases}</div>
-              <p className="text-xs text-muted-foreground mt-1">Cases assigned to you{teamStats.avgCasesPerMember} per member</p>
+              <p className="text-xs text-muted-foreground mt-1">Cases you have access to{teamStats.avgCasesPerMember} per member</p>
             </CardContent>
           </Card>
 
