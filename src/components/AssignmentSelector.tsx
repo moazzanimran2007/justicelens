@@ -73,7 +73,7 @@ export const AssignmentSelector = ({
         <User className="w-4 h-4 mr-2" />
         <SelectValue placeholder="Unassigned" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="bg-popover z-50">
         <SelectItem value="unassigned">Unassigned</SelectItem>
         {teamMembers.map((member) => (
           <SelectItem key={member.id} value={member.id}>
