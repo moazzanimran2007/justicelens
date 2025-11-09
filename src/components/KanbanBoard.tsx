@@ -93,7 +93,7 @@ export const KanbanBoard = ({
       .from("analyses")
       .select(`
         *,
-        assignee:profiles(full_name, nickname)
+        assignee:profiles!analyses_assigned_to_fkey(full_name, nickname)
       `)
       .order("created_at", { ascending: false });
 
@@ -104,7 +104,7 @@ export const KanbanBoard = ({
     // Transform data to handle assignee as single object
     const transformedData = data?.map(item => ({
       ...item,
-      assignee: Array.isArray(item.assignee) ? item.assignee[0] : item.assignee
+      assignee: Array.isArray(item.assignee) && item.assignee.length > 0 ? item.assignee[0] : null
     }));
     setCases(transformedData || []);
   };
