@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, FileText, AlertCircle, Brain, LogOut } from "lucide-react";
+import { Upload, FileText, AlertCircle, Brain, LogOut, LayoutDashboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -21,6 +21,7 @@ const Index = () => {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [intakeStageId, setIntakeStageId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,6 +46,20 @@ const Index = () => {
         navigate("/auth");
       }
     });
+
+    // Fetch intake stage ID
+    const fetchIntakeStage = async () => {
+      const { data } = await supabase
+        .from("pipeline_stages")
+        .select("id")
+        .eq("name", "Intake")
+        .single();
+      
+      if (data) {
+        setIntakeStageId(data.id);
+      }
+    };
+    fetchIntakeStage();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -137,12 +152,22 @@ const Index = () => {
               file_path: filePath,
               file_size: file.size,
               analysis_modules: selectedModules,
-              status: 'pending'
+              status: 'pending',
+              stage_id: intakeStageId,
+              priority: 'medium'
             })
             .select()
             .single();
 
           if (insertError) throw insertError;
+
+          // Log initial activity
+          await supabase.from('case_activities').insert({
+            case_id: analysisData.id,
+            user_id: user.id,
+            activity_type: 'case_created',
+            description: `Case created: ${file.name}`
+          });
 
           if (i === 0) {
             setIsUploading(false);
@@ -301,6 +326,10 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/pipeline")} className="gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                Pipeline
+              </Button>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
                 <LogOut className="w-4 h-4" />
