@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Pipeline from "./pages/Pipeline";
 import Team from "./pages/Team";
 import CaseDetails from "./pages/CaseDetails";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/case/:id" element={<CaseDetails />} />
           <Route path="/new-case" element={<Index />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/guide" element={<Guide />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

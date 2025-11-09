@@ -62,7 +62,14 @@ export const Header = ({ user }: HeaderProps) => {
               Team
             </Button>
             <NotificationBell />
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/profile")}
+              className="text-sm font-medium text-foreground hover:text-primary"
+            >
+              {user?.email}
+            </Button>
             <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-2">
               <LogOut className="w-4 h-4" />
               Sign Out
