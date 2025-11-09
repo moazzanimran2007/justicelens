@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Upload, LayoutDashboard, Users } from "lucide-react";
+import { LogOut, Upload, LayoutDashboard, Users, Pencil, Check, X } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 
 interface TeamMember {
   id: string;
@@ -30,10 +32,14 @@ interface CaseInfo {
 
 export default function Team() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const [teamStats, setTeamStats] = useState({
     totalCases: 0,
     totalUrgent: 0,
@@ -60,6 +66,14 @@ export default function Team() {
       navigate("/auth");
     } else {
       setUser(user);
+      
+      // Check if user is admin
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      
+      setIsAdmin(rolesData?.some(r => r.role === "admin") || false);
     }
   };
 
@@ -168,6 +182,42 @@ export default function Team() {
         return "secondary";
       default:
         return "outline";
+    }
+  };
+
+  const handleStartEdit = (memberId: string, currentName: string | null, email: string) => {
+    setEditingMemberId(memberId);
+    setEditingName(currentName || email);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMemberId(null);
+    setEditingName("");
+  };
+
+  const handleSaveEdit = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: editingName })
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Team member name updated",
+      });
+
+      setEditingMemberId(null);
+      setEditingName("");
+      fetchTeamData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -283,14 +333,64 @@ export default function Team() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-base truncate">{member.full_name || member.email}</CardTitle>
-                    {member.roles.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {member.roles[0]}
-                      </Badge>
+                    {editingMemberId === member.id ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="h-8 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSaveEdit(member.id);
+                          }}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCancelEdit();
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <CardTitle className="text-base truncate">{member.full_name || member.email}</CardTitle>
+                        {isAdmin && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEdit(member.id, member.full_name, member.email);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {member.roles.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {member.roles.join(", ")}
+                          </Badge>
+                        )}
+                      </>
                     )}
                   </div>
-                  {member.full_name && <p className="text-xs text-muted-foreground truncate">{member.email}</p>}
+                  {member.full_name && editingMemberId !== member.id && (
+                    <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
