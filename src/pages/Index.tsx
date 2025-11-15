@@ -131,15 +131,21 @@ const Index = () => {
             });
           }, 200);
 
-          // Upload file to storage
-          const { error: uploadError } = await supabase.storage
-            .from('transcripts')
-            .upload(filePath, file);
+          // Upload file via edge function (creates bucket if needed)
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('filePath', filePath);
+
+          const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-transcript', {
+            body: formData,
+          });
 
           clearInterval(progressInterval);
           setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
-          if (uploadError) throw uploadError;
+          if (uploadError || !uploadData?.success) {
+            throw uploadError || new Error('Upload failed');
+          }
 
           // Read file content (handle PDF or TXT)
           let text: string;
