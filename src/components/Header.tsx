@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, LayoutDashboard, Users, FileText, LogOut } from "lucide-react";
+import { Brain, LayoutDashboard, Users, FileText, LogOut, MessageSquare } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -35,6 +35,10 @@ export const Header = ({
             <Button variant={isActive("/new-case") ? "secondary" : "ghost"} size="sm" onClick={() => navigate("/new-case")} className="gap-2">
               <FileText className="w-4 h-4" />
               New Case
+            </Button>
+            <Button variant={isActive("/chatbot") ? "secondary" : "ghost"} size="sm" onClick={() => navigate("/chatbot")} className="gap-2">
+              <MessageSquare className="w-4 h-4" />
+              AI Assistant
             </Button>
             <Button variant={isActive("/team") ? "secondary" : "ghost"} size="sm" onClick={() => navigate("/team")} className="gap-2">
               <Users className="w-4 h-4" />
