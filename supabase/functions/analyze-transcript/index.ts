@@ -58,6 +58,26 @@ function getPriorityFromScore(score: number): string {
   return 'low';
 }
 
+// Helper function to extract commissioner from context
+function extractCommissionerFromContext(context: string): { name: string; title: string } | null {
+  const commissionerMatch = context.match(/Commissioner\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+  
+  if (commissionerMatch) {
+    const fullMatch = commissionerMatch[0];
+    const name = commissionerMatch[1];
+    
+    const title = fullMatch.toLowerCase().includes('deputy') 
+      ? 'Deputy Commissioner' 
+      : fullMatch.toLowerCase().includes('presiding')
+      ? 'Presiding Commissioner'
+      : 'Commissioner';
+    
+    return { name, title };
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -218,7 +238,7 @@ serve(async (req) => {
     // Bias & Fairness Audit
     if (modules.includes('bias')) {
       console.log('Analyzing bias indicators...');
-      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past. For each example found, try to identify the approximate page number or section where it appears in the transcript.`;
+      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past. For each example found, identify the approximate page number AND include the FULL NAME of the person who said it in the context (e.g., "Commissioner Neil Schneider said..."). Focus especially on identifying commissioners and their biased statements.`;
 
       const biasResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -256,7 +276,7 @@ serve(async (req) => {
                             properties: {
                               quote: { type: "string", description: "The problematic quote from the transcript" },
                               page: { type: "string", description: "Page number or section reference (e.g., 'Page 5', 'Beginning', 'Middle')" },
-                              context: { type: "string", description: "Brief context about who said it or the situation" }
+                              context: { type: "string", description: "Brief context including the FULL NAME of who said it (e.g., 'Commissioner Neil Schneider said...')" }
                             },
                             required: ["quote", "page"]
                           }
@@ -284,6 +304,53 @@ serve(async (req) => {
       
       if (toolCall?.function?.arguments) {
         results.biasIndicators = JSON.parse(toolCall.function.arguments);
+        
+        // Extract and store commissioner bias statements
+        console.log('Extracting commissioners from bias statements...');
+        if (results.biasIndicators?.categories) {
+          for (const category of results.biasIndicators.categories) {
+            for (const occurrence of category.occurrences) {
+              const commissionerInfo = extractCommissionerFromContext(occurrence.context || '');
+              
+              if (commissionerInfo) {
+                // Get or create commissioner
+                const { data: commissioner, error: commissionerError } = await supabase
+                  .from('commissioners')
+                  .upsert({
+                    name: commissionerInfo.name,
+                    title: commissionerInfo.title
+                  }, {
+                    onConflict: 'name',
+                    ignoreDuplicates: false
+                  })
+                  .select()
+                  .single();
+                
+                if (commissionerError) {
+                  console.error('Error upserting commissioner:', commissionerError);
+                  continue;
+                }
+                
+                // Insert bias statement
+                const { error: statementError } = await supabase
+                  .from('commissioner_bias_statements')
+                  .insert({
+                    commissioner_id: commissioner.id,
+                    analysis_id: analysisId,
+                    bias_type: category.type,
+                    severity: category.severity,
+                    quote: occurrence.quote,
+                    page_reference: occurrence.page,
+                    context: occurrence.context
+                  });
+                
+                if (statementError) {
+                  console.error('Error inserting bias statement:', statementError);
+                }
+              }
+            }
+          }
+        }
       } else {
         throw new Error("AI did not return structured bias analysis");
       }

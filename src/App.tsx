@@ -12,6 +12,7 @@ import Team from "./pages/Team";
 import CaseDetails from "./pages/CaseDetails";
 import Profile from "./pages/Profile";
 import Chatbot from "./pages/Chatbot";
+import Commissioners from "./pages/Commissioners";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/case/:id" element={<CaseDetails />} />
           <Route path="/new-case" element={<Index />} />
           <Route path="/chatbot" element={<Chatbot />} />
+          <Route path="/commissioners" element={<Commissioners />} />
           <Route path="/team" element={<Team />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/auth" element={<Auth />} />
