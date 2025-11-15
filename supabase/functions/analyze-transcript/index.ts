@@ -60,6 +60,7 @@ function getPriorityFromScore(score: number): string {
 
 // Helper function to extract commissioner from context
 function extractCommissionerFromContext(context: string): { name: string; title: string } | null {
+  // Try to match "Commissioner [Name]" pattern
   const commissionerMatch = context.match(/Commissioner\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
   
   if (commissionerMatch) {
@@ -73,6 +74,16 @@ function extractCommissionerFromContext(context: string): { name: string; title:
       : 'Commissioner';
     
     return { name, title };
+  }
+  
+  // Fallback: If no "Commissioner" prefix but context looks like a name
+  // Extract capitalized words that look like names
+  const nameMatch = context.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/);
+  if (nameMatch && context.toLowerCase().includes('commissioner')) {
+    return { 
+      name: nameMatch[1], 
+      title: 'Commissioner' 
+    };
   }
   
   return null;
@@ -538,6 +549,33 @@ serve(async (req) => {
               .from('legal_memos')
               .update({ people_mentioned: peopleMentioned })
               .eq('analysis_id', analysisId);
+          }
+          
+          // Extract and create records for ALL commissioners mentioned
+          console.log('Creating commissioner records for all commissioners mentioned...');
+          const commissioners = peopleMentioned.filter(person => 
+            person.role && person.role.toLowerCase().includes('commissioner')
+          );
+          
+          for (const person of commissioners) {
+            const commissionerInfo = extractCommissionerFromContext(person.name + ' ' + person.role);
+            if (commissionerInfo) {
+              const { error: commissionerError } = await supabase
+                .from('commissioners')
+                .upsert({
+                  name: commissionerInfo.name,
+                  title: commissionerInfo.title || person.role
+                }, {
+                  onConflict: 'name',
+                  ignoreDuplicates: false
+                })
+                .select()
+                .single();
+              
+              if (commissionerError) {
+                console.error('Error upserting commissioner:', commissionerError);
+              }
+            }
           }
         }
       }
