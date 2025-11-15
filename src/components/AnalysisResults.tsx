@@ -12,6 +12,7 @@ import LegalMemoDisplay from "./LegalMemoDisplay";
 import InnocenceScoreCard from "./InnocenceScoreCard";
 import { PeopleMentionedCard } from "./PeopleMentionedCard";
 import { LegalMemoPrintView } from "./LegalMemoPrintView";
+import { CommissionerBiasCard } from "./CommissionerBiasCard";
 
 interface AnalysisResultsProps {
   analysis: any;
@@ -260,6 +261,32 @@ const AnalysisResults = ({ analysis, onNewAnalysis, analysisId }: AnalysisResult
                     <BiasCategory key={idx} category={category} getSeverityColor={getSeverityColor} />
                   ))}
                 </div>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        )}
+
+        {/* Commissioner Bias Analysis */}
+        {analysis.biasIndicators && analysisId && (
+          <AccordionItem value="commissioner-bias" className="border-none">
+            <Card className="border-border shadow-md">
+              <AccordionTrigger className="px-6 pt-6 pb-4 hover:no-underline">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-destructive/10">
+                    <AlertCircle className="w-6 h-6 text-destructive" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-bold text-foreground">
+                      Commissioner Bias Analysis
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Track bias patterns by individual commissioners
+                    </p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <CommissionerBiasCard analysisId={analysisId} />
               </AccordionContent>
             </Card>
           </AccordionItem>

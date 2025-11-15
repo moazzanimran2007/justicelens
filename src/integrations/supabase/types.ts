@@ -162,6 +162,90 @@ export type Database = {
           },
         ]
       }
+      commissioner_bias_statements: {
+        Row: {
+          analysis_id: string
+          bias_type: string
+          commissioner_id: string
+          context: string | null
+          created_at: string | null
+          id: string
+          page_reference: string | null
+          quote: string
+          severity: string
+        }
+        Insert: {
+          analysis_id: string
+          bias_type: string
+          commissioner_id: string
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          page_reference?: string | null
+          quote: string
+          severity: string
+        }
+        Update: {
+          analysis_id?: string
+          bias_type?: string
+          commissioner_id?: string
+          context?: string | null
+          created_at?: string | null
+          id?: string
+          page_reference?: string | null
+          quote?: string
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissioner_bias_statements_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissioner_bias_statements_commissioner_id_fkey"
+            columns: ["commissioner_id"]
+            isOneToOne: false
+            referencedRelation: "commissioners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissioners: {
+        Row: {
+          bias_score: number | null
+          created_at: string | null
+          first_appearance_date: string | null
+          id: string
+          name: string
+          title: string | null
+          total_cases: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          bias_score?: number | null
+          created_at?: string | null
+          first_appearance_date?: string | null
+          id?: string
+          name: string
+          title?: string | null
+          total_cases?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          bias_score?: number | null
+          created_at?: string | null
+          first_appearance_date?: string | null
+          id?: string
+          name?: string
+          title?: string | null
+          total_cases?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       legal_memos: {
         Row: {
           analysis_id: string
@@ -462,6 +546,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_commissioner_bias_score: {
+        Args: { commissioner_uuid: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
