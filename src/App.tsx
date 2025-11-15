@@ -11,6 +11,7 @@ import Pipeline from "./pages/Pipeline";
 import Team from "./pages/Team";
 import CaseDetails from "./pages/CaseDetails";
 import Profile from "./pages/Profile";
+import Chatbot from "./pages/Chatbot";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/" element={<Pipeline />} />
           <Route path="/case/:id" element={<CaseDetails />} />
           <Route path="/new-case" element={<Index />} />
+          <Route path="/chatbot" element={<Chatbot />} />
           <Route path="/team" element={<Team />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/auth" element={<Auth />} />
