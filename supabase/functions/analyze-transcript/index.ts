@@ -249,7 +249,28 @@ serve(async (req) => {
     // Bias & Fairness Audit
     if (modules.includes('bias')) {
       console.log('Analyzing bias indicators...');
-      const biasPrompt = `Analyze the parole hearing transcript for bias and fairness issues including victim-centric framing, demeanor comments, stigmatizing language, and focus on unchangeable past. For each example found, identify the approximate page number AND include the FULL NAME of the person who said it in the context (e.g., "Commissioner Neil Schneider said..."). Focus especially on identifying commissioners and their biased statements.`;
+      const biasPrompt = `Conduct a comprehensive bias analysis of this parole hearing transcript. Analyze with HIGH SENSITIVITY for both explicit and subtle forms of bias. Look for:
+
+1. **Victim-Centric Framing**: Excessive focus on victim impact rather than rehabilitation and current suitability
+2. **Demeanor Bias**: Comments about appearance, body language, emotional expression, or perceived sincerity
+3. **Stigmatizing Language**: Labels like "monster," "evil," "cold-blooded," or dehumanizing terms
+4. **Fixed Mindset Bias**: Focus on unchangeable past actions rather than growth and transformation
+5. **Racial/Ethnic Bias**: Stereotyping, microaggressions, or differential treatment based on race/ethnicity
+6. **Gender Bias**: Stereotypes or expectations based on gender identity
+7. **Age Bias**: Dismissive attitudes about age-related change or maturity
+8. **Class Bias**: Judgments about socioeconomic background, education level, or resources
+9. **Cognitive Bias**: Leading questions, confirmation bias, or selective focus on negative information
+10. **Tone and Framing**: Hostile questioning, sarcasm, dismissive language, or presumption of guilt
+11. **Disproportionate Scrutiny**: Holding the individual to impossibly high standards compared to typical parole cases
+12. **Emotional Manipulation**: Using emotional language to prejudice decision-making
+
+For EACH instance you identify:
+- Provide the exact quote
+- Identify the FULL NAME and title of the speaker (e.g., "Commissioner Neil Schneider")
+- Note the page number or section reference
+- Assess severity as low, moderate, or high based on potential impact on fairness
+
+Be thorough and flag even subtle forms of bias that could impact fair decision-making. Do not overlook indirect or implicit biases.`;
 
       const biasResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
