@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pencil, Check, X, Shield, Upload } from "lucide-react";
+import { Pencil, Check, X, Shield, Upload, Link2, Copy, Trash2, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ export default function Team() {
   const [user, setUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [myTeams, setMyTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
   const [teamStats, setTeamStats] = useState({
@@ -67,11 +68,22 @@ export default function Team() {
     email: string;
     full_name: string | null;
   }>>([]);
+  const [invitations, setInvitations] = useState<Array<{
+    id: string;
+    team_id: string;
+    invite_code: string;
+    status: string;
+    max_uses: number;
+    uses_count: number;
+    expires_at: string | null;
+    created_at: string;
+  }>>([]);
   useEffect(() => {
     checkAuth();
     fetchTeamData();
     fetchTeamSettings();
     fetchPendingRequests();
+    fetchInvitations();
   }, []);
   useEffect(() => {
     if (selectedMember) {
@@ -99,12 +111,23 @@ export default function Team() {
       if (user) {
         const { data: teamMemberData } = await supabase
           .from("team_members")
-          .select("role")
+          .select("role, team_id")
           .eq("user_id", user.id)
           .eq("status", "approved");
         
         const isTeamAdmin = teamMemberData?.some(tm => tm.role === "admin") || false;
         setIsAdmin(rolesData?.some(r => r.role === "admin") || isTeamAdmin);
+        
+        // Load user's teams
+        if (teamMemberData && teamMemberData.length > 0) {
+          const teamIds = teamMemberData.map(tm => tm.team_id);
+          const { data: teamsData } = await supabase
+            .from("teams")
+            .select("id, name")
+            .in("id", teamIds);
+          
+          setMyTeams(teamsData || []);
+        }
       }
     }
   };
@@ -211,6 +234,112 @@ export default function Team() {
       });
     }
   };
+
+  const fetchInvitations = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get teams where user is admin
+    const { data: adminTeams } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .eq("status", "approved");
+
+    if (!adminTeams || adminTeams.length === 0) {
+      setInvitations([]);
+      return;
+    }
+
+    const teamIds = adminTeams.map(t => t.team_id);
+
+    // Get active invitations for those teams
+    const { data: invites } = await supabase
+      .from("team_invitations")
+      .select("*")
+      .in("team_id", teamIds)
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
+
+    setInvitations(invites || []);
+  };
+
+  const handleCreateInvite = async (teamId: string, maxUses: number = 1, expiresInDays?: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Generate unique invite code
+      const inviteCode = `${teamId.slice(0, 8)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      let expiresAt = null;
+      if (expiresInDays) {
+        const expireDate = new Date();
+        expireDate.setDate(expireDate.getDate() + expiresInDays);
+        expiresAt = expireDate.toISOString();
+      }
+
+      const { error } = await supabase
+        .from("team_invitations")
+        .insert({
+          team_id: teamId,
+          created_by: user.id,
+          invite_code: inviteCode,
+          max_uses: maxUses,
+          expires_at: expiresAt,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Invite created!",
+        description: "Copy the link to share with your team members",
+      });
+
+      fetchInvitations();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyInviteLink = (inviteCode: string) => {
+    const inviteUrl = `${window.location.origin}/invite?code=${inviteCode}`;
+    navigator.clipboard.writeText(inviteUrl);
+    toast({
+      title: "Link copied!",
+      description: "Share this link with team members",
+    });
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    try {
+      const { error } = await supabase
+        .from("team_invitations")
+        .update({ status: "revoked" })
+        .eq("id", inviteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Invite revoked",
+        description: "This invitation link is no longer valid",
+      });
+
+      fetchInvitations();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const fetchTeamData = async () => {
     // Get all profiles
     const {
@@ -662,6 +791,72 @@ export default function Team() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Team Invitations Section */}
+        {isAdmin && myTeams.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Team Invitations</CardTitle>
+                  <p className="text-sm text-muted-foreground">Create invite links to add members</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleCreateInvite(myTeams[0].id)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Invite Link
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {invitations.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No active invitations</p>
+              ) : (
+                <div className="space-y-3">
+                  {invitations.map(invite => (
+                    <div key={invite.id} className="flex items-center justify-between p-4 rounded-lg border">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link2 className="h-4 w-4 text-muted-foreground" />
+                          <code className="text-sm font-mono truncate">
+                            {window.location.origin}/invite?code={invite.invite_code}
+                          </code>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Used {invite.uses_count}/{invite.max_uses}</span>
+                          {invite.expires_at && (
+                            <span>
+                              Expires {new Date(invite.expires_at).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span>Created {new Date(invite.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCopyInviteLink(invite.invite_code)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRevokeInvite(invite.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

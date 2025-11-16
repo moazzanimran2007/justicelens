@@ -75,11 +75,18 @@ const Auth = () => {
           });
         }
       } else {
-        setShowTeamStep(true);
-        toast({
-          title: "Account created!",
-          description: "Now choose how to join a team.",
-        });
+        // Check if there's a pending invite
+        const pendingInvite = sessionStorage.getItem("pending_invite");
+        if (pendingInvite) {
+          sessionStorage.removeItem("pending_invite");
+          navigate(`/invite?code=${pendingInvite}`);
+        } else {
+          setShowTeamStep(true);
+          toast({
+            title: "Account created!",
+            description: "Now choose how to join a team.",
+          });
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -113,7 +120,14 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
-        navigate("/");
+        // Check if there's a pending invite
+        const pendingInvite = sessionStorage.getItem("pending_invite");
+        if (pendingInvite) {
+          sessionStorage.removeItem("pending_invite");
+          navigate(`/invite?code=${pendingInvite}`);
+        } else {
+          navigate("/");
+        }
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
