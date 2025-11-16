@@ -60,10 +60,18 @@ export default function Team() {
   const [editingTeamSettingsName, setEditingTeamSettingsName] = useState("");
   const [editingTeamSettingsIcon, setEditingTeamSettingsIcon] = useState("");
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Array<{
+    id: string;
+    user_id: string;
+    team_id: string;
+    email: string;
+    full_name: string | null;
+  }>>([]);
   useEffect(() => {
     checkAuth();
     fetchTeamData();
     fetchTeamSettings();
+    fetchPendingRequests();
   }, []);
   useEffect(() => {
     if (selectedMember) {
@@ -86,6 +94,122 @@ export default function Team() {
         data: rolesData
       } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
       setIsAdmin(rolesData?.some(r => r.role === "admin") || false);
+      
+      // Also check team_members for team admin role
+      if (user) {
+        const { data: teamMemberData } = await supabase
+          .from("team_members")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("status", "approved");
+        
+        const isTeamAdmin = teamMemberData?.some(tm => tm.role === "admin") || false;
+        setIsAdmin(rolesData?.some(r => r.role === "admin") || isTeamAdmin);
+      }
+    }
+  };
+  
+  const fetchPendingRequests = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Get teams where user is admin
+    const { data: adminTeams } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .eq("status", "approved");
+
+    if (!adminTeams || adminTeams.length === 0) {
+      setPendingRequests([]);
+      return;
+    }
+
+    const teamIds = adminTeams.map(t => t.team_id);
+
+    // Get pending requests for those teams
+    const { data: requests } = await supabase
+      .from("team_members")
+      .select(`
+        id,
+        user_id,
+        team_id
+      `)
+      .in("team_id", teamIds)
+      .eq("status", "pending");
+
+    if (!requests) {
+      setPendingRequests([]);
+      return;
+    }
+
+    // Get profile info for each pending user
+    const userIds = requests.map(r => r.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", userIds);
+
+    const requestsWithProfiles = requests.map(req => {
+      const profile = profiles?.find(p => p.id === req.user_id);
+      return {
+        ...req,
+        email: profile?.email || "",
+        full_name: profile?.full_name
+      };
+    });
+
+    setPendingRequests(requestsWithProfiles);
+  };
+
+  const handleApproveRequest = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from("team_members")
+        .update({ status: "approved" })
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Approved",
+        description: "Team member approved successfully",
+      });
+
+      fetchPendingRequests();
+      fetchTeamData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectRequest = async (memberId: string) => {
+    try {
+      const { error } = await supabase
+        .from("team_members")
+        .delete()
+        .eq("id", memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Rejected",
+        description: "Request rejected",
+      });
+
+      fetchPendingRequests();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
     }
   };
   const fetchTeamData = async () => {
@@ -385,7 +509,8 @@ export default function Team() {
       });
     }
   };
-  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
 
       <main className="container mx-auto px-4 py-6">
@@ -394,7 +519,8 @@ export default function Team() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {editingTeamSettings ? <div className="flex items-center gap-3">
+                {editingTeamSettings ? (
+                  <div className="flex items-center gap-3">
                     <Input value={editingTeamSettingsIcon} onChange={e => setEditingTeamSettingsIcon(e.target.value)} placeholder="Icon" className="w-20 text-2xl text-center" maxLength={2} />
                     <Input value={editingTeamSettingsName} onChange={e => setEditingTeamSettingsName(e.target.value)} placeholder="Team Name" className="text-2xl font-bold" />
                     <Button size="sm" onClick={handleSaveTeamSettings}>
@@ -403,10 +529,14 @@ export default function Team() {
                     <Button size="sm" variant="ghost" onClick={handleCancelEditTeamSettings}>
                       <X className="h-4 w-4" />
                     </Button>
-                  </div> : <>
-                    {teamSettings.logo_url ? <div className="relative group">
+                  </div>
+                ) : (
+                  <>
+                    {teamSettings.logo_url ? (
+                      <div className="relative group">
                         <img src={teamSettings.logo_url} alt="Team Logo" className="w-16 h-16 object-contain rounded-lg border border-border" />
-                        {isAdmin && <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                        {isAdmin && (
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                             <label htmlFor="logo-upload" className="cursor-pointer">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" asChild>
                                 <span>
@@ -417,24 +547,33 @@ export default function Team() {
                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" onClick={handleRemoveLogo}>
                               <X className="h-3 w-3" />
                             </Button>
-                          </div>}
-                      </div> : <div className="relative group">
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative group">
                         <div className="text-4xl">{teamSettings.team_icon}</div>
-                        {isAdmin && <label htmlFor="logo-upload" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
+                        {isAdmin && (
+                          <label htmlFor="logo-upload" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
                             <Upload className="h-5 w-5 text-white" />
-                          </label>}
-                      </div>}
+                          </label>
+                        )}
+                      </div>
+                    )}
                     <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={!isAdmin || uploadingLogo} />
                     <div>
                       <h2 className="text-2xl font-bold flex items-center gap-2">
                         {teamSettings.team_name}
-                        {isAdmin && <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleStartEditTeamSettings}>
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleStartEditTeamSettings}>
                             <Pencil className="h-3 w-3" />
-                          </Button>}
+                          </Button>
+                        )}
                       </h2>
                       <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
                     </div>
-                  </>}
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -488,6 +627,45 @@ export default function Team() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Pending Requests Section */}
+        {isAdmin && pendingRequests.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Pending Requests</CardTitle>
+              <p className="text-sm text-muted-foreground">Review team membership requests</p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pendingRequests.map(request => (
+                  <div key={request.id} className="flex items-center justify-between p-4 rounded-lg border">
+                    <div>
+                      <p className="font-medium">{request.full_name || request.email}</p>
+                      <p className="text-sm text-muted-foreground">{request.email}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveRequest(request.id)}
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRejectRequest(request.id)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Team Members Section */}
         <Card>
@@ -617,5 +795,8 @@ export default function Team() {
             </CardContent>
           </Card>}
       </main>
-    </div>;
+    </div>
+  );
 }
+
+export default Team;
