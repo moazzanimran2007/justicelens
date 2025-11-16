@@ -148,16 +148,69 @@ const Auth = () => {
     }
   };
   return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center p-6">
-      <Card className="w-full max-w-md p-8">
-        <div className="flex items-center gap-3 mb-6 justify-center">
-          
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">#JusticeLens</h1>
-            <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
+        {/* Function Overview Section */}
+        <div className="hidden lg:block space-y-6">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <Brain className="w-4 h-4" />
+              <span className="text-sm font-medium">AI-Powered Analysis</span>
+            </div>
+            <h1 className="text-4xl font-bold text-foreground">
+              #JusticeLens
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Parole Insight Analyzer
+            </p>
+            <p className="text-base text-muted-foreground leading-relaxed">
+              Streamline your parole case analysis with AI-powered insights, commissioner bias detection, and collaborative team workflows.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-border shadow-sm">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">AI Analysis</h3>
+                <p className="text-sm text-muted-foreground">Automated transcript analysis with innocence scoring and legal memo generation</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-border shadow-sm">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Bias Detection</h3>
+                <p className="text-sm text-muted-foreground">Track and analyze commissioner bias patterns across cases</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-card border border-border shadow-sm">
+              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+                <Brain className="w-5 h-5 text-success" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground mb-1">Team Collaboration</h3>
+                <p className="text-sm text-muted-foreground">Manage cases with your team using pipeline workflows and role-based access</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Tabs defaultValue="signin" className="w-full">
+        {/* Auth Form Section */}
+        <Card className="w-full p-8 shadow-lg">
+          <div className="lg:hidden flex items-center gap-3 mb-6 justify-center">
+            <Brain className="w-8 h-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">#JusticeLens</h1>
+              <p className="text-sm text-muted-foreground">Parole Insight Analyzer</p>
+            </div>
+          </div>
+
+          <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -292,8 +345,9 @@ const Auth = () => {
                 </Button>
               </div>}
           </TabsContent>
-        </Tabs>
-      </Card>
+          </Tabs>
+        </Card>
+      </div>
     </div>;
 };
 export default Auth;
