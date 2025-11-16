@@ -210,7 +210,6 @@ export default function Team() {
         variant: "destructive",
       });
     }
-    }
   };
   const fetchTeamData = async () => {
     // Get all profiles
@@ -679,7 +678,8 @@ export default function Team() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {teamMembers.map(member => <div key={member.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`} onClick={() => setSelectedMember(member.id)}>
+              {teamMembers.map(member => (
+                <div key={member.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`} onClick={() => setSelectedMember(member.id)}>
                   {/* Avatar */}
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={member.avatar_url || undefined} />
@@ -692,7 +692,8 @@ export default function Team() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h4 className="font-semibold text-sm truncate">{member.full_name || member.email}</h4>
-                      {isAdmin && <Dialog>
+                      {isAdmin && (
+                        <Dialog>
                           <DialogTrigger asChild>
                             <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
                               <Shield className="h-3 w-3" />
@@ -709,10 +710,16 @@ export default function Team() {
                               <div>
                                 <p className="text-sm font-medium mb-2">Current Roles:</p>
                                 <div className="flex flex-wrap gap-2">
-                                  {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                  {member.roles.length === 0 ? (
+                                    <Badge variant="outline">No roles assigned</Badge>
+                                  ) : (
+                                    member.roles.map(role => (
+                                      <Badge key={role} variant="secondary" className="flex items-center gap-1">
                                         {role}
                                         <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
-                                      </Badge>)}
+                                      </Badge>
+                                    ))
+                                  )}
                                 </div>
                               </div>
                               <div>
@@ -731,12 +738,19 @@ export default function Team() {
                               </div>
                             </div>
                           </DialogContent>
-                        </Dialog>}
+                        </Dialog>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {member.roles.length > 0 ? member.roles.map(role => <Badge key={role} variant="outline" className="text-xs">
+                      {member.roles.length > 0 ? (
+                        member.roles.map(role => (
+                          <Badge key={role} variant="outline" className="text-xs">
                             {role}
-                          </Badge>) : <span className="text-xs text-muted-foreground">No role assigned</span>}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No role assigned</span>
+                      )}
                     </div>
                   </div>
 
@@ -755,12 +769,14 @@ export default function Team() {
                       <p className="text-xs text-muted-foreground">Urgent</p>
                     </div>
                   </div>
-                </div>)}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {selectedMember && <Card className="mt-6">
+        {selectedMember && (
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle>
                 Cases for{" "}
@@ -768,7 +784,10 @@ export default function Team() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
+              {memberCases.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No cases assigned</p>
+              ) : (
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Name</TableHead>
@@ -778,7 +797,8 @@ export default function Team() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                    {memberCases.map(case_ => (
+                      <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
                         <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
@@ -789,14 +809,15 @@ export default function Team() {
                         <TableCell className="text-muted-foreground">
                           {new Date(case_.created_at).toLocaleDateString()}
                         </TableCell>
-                      </TableRow>)}
+                      </TableRow>
+                    ))}
                   </TableBody>
-                </Table>}
+                </Table>
+              )}
             </CardContent>
-          </Card>}
+          </Card>
+        )}
       </main>
     </div>
   );
 }
-
-export default Team;
