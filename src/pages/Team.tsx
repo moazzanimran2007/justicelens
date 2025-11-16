@@ -2,681 +2,620 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pencil, Check, X, Shield, Upload } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Plus, Check, X, UserPlus, Shield } from "lucide-react";
-
-interface Team {
+interface TeamMember {
   id: string;
-  name: string;
-  description: string | null;
-  created_by: string;
-  created_at: string;
-  member_count?: number;
-  user_membership?: TeamMembership | null;
+  email: string;
+  full_name: string | null;
+  nickname: string | null;
+  job_title: string | null;
+  team_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  case_count: number;
+  high_priority_count: number;
+  urgent_count: number;
+  roles: string[];
 }
-
-interface TeamMembership {
+interface CaseInfo {
   id: string;
-  team_id: string;
-  user_id: string;
-  role: string;
+  client_name: string | null;
+  file_name: string;
+  priority: string;
   status: string;
   created_at: string;
 }
-
-interface TeamMemberWithProfile {
-  id: string;
-  user_id: string;
-  role: string;
-  status: string;
-  created_at: string;
-  profiles: {
-    email: string;
-    full_name: string | null;
-    avatar_url: string | null;
-  };
-}
-
 export default function Team() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [user, setUser] = useState<any>(null);
-  const [allTeams, setAllTeams] = useState<Team[]>([]);
-  const [myTeams, setMyTeams] = useState<Team[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [teamMembers, setTeamMembers] = useState<TeamMemberWithProfile[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<TeamMemberWithProfile[]>([]);
-  
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newTeamName, setNewTeamName] = useState("");
-  const [newTeamDescription, setNewTeamDescription] = useState("");
-
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  const [memberCases, setMemberCases] = useState<CaseInfo[]>([]);
+  const [teamStats, setTeamStats] = useState({
+    totalCases: 0,
+    totalUrgent: 0,
+    totalHigh: 0,
+    avgCasesPerMember: 0
+  });
+  const [teamSettings, setTeamSettings] = useState({
+    id: "",
+    team_name: "Justice Team",
+    team_icon: "⚖️",
+    logo_url: null as string | null
+  });
+  const [editingTeamSettings, setEditingTeamSettings] = useState(false);
+  const [editingTeamSettingsName, setEditingTeamSettingsName] = useState("");
+  const [editingTeamSettingsIcon, setEditingTeamSettingsIcon] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   useEffect(() => {
     checkAuth();
+    fetchTeamData();
+    fetchTeamSettings();
   }, []);
-
   useEffect(() => {
-    if (user) {
-      fetchAllTeams();
-      fetchMyTeams();
+    if (selectedMember) {
+      fetchMemberCases(selectedMember);
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedTeam) {
-      fetchTeamMembers(selectedTeam.id);
-      fetchPendingRequests(selectedTeam.id);
-    }
-  }, [selectedTeam]);
-
+  }, [selectedMember]);
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: {
+        user
+      }
+    } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
     } else {
       setUser(user);
+
+      // Check if user is admin
+      const {
+        data: rolesData
+      } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+      setIsAdmin(rolesData?.some(r => r.role === "admin") || false);
     }
   };
+  const fetchTeamData = async () => {
+    // Get all profiles
+    const {
+      data: profiles,
+      error: profilesError
+    } = await supabase.from("profiles").select("id, email, full_name, nickname, job_title, team_name, bio, avatar_url").order("full_name");
+    if (profilesError || !profiles) return;
 
-  const fetchAllTeams = async () => {
-    const { data: teams, error } = await supabase
-      .from("teams")
-      .select("*")
-      .order("created_at", { ascending: false });
+    // Get roles for all users
+    const {
+      data: rolesData
+    } = await supabase.from("user_roles").select("user_id, role");
+    const rolesByUser = (rolesData || []).reduce((acc, {
+      user_id,
+      role
+    }) => {
+      if (!acc[user_id]) acc[user_id] = [];
+      acc[user_id].push(role);
+      return acc;
+    }, {} as Record<string, string[]>);
 
-    if (error) {
-      console.error("Error fetching teams:", error);
-      return;
-    }
-
-    const teamsWithInfo = await Promise.all(
-      (teams || []).map(async (team) => {
-        const { count } = await supabase
-          .from("team_members")
-          .select("*", { count: "exact", head: true })
-          .eq("team_id", team.id)
-          .eq("status", "approved");
-
-        const { data: membership } = await supabase
-          .from("team_members")
-          .select("*")
-          .eq("team_id", team.id)
-          .eq("user_id", user?.id)
-          .single();
-
-        return {
-          ...team,
-          member_count: count || 0,
-          user_membership: membership || null,
-        };
-      })
-    );
-
-    setAllTeams(teamsWithInfo);
-  };
-
-  const fetchMyTeams = async () => {
-    const { data: memberships, error } = await supabase
-      .from("team_members")
-      .select(`
-        *,
-        teams(*)
-      `)
-      .eq("user_id", user?.id)
-      .eq("status", "approved");
-
-    if (error) {
-      console.error("Error fetching my teams:", error);
-      return;
-    }
-
-    const teams = (memberships || []).map((m: any) => ({
-      ...m.teams,
-      user_membership: m,
+    // Get case counts for each member
+    const membersWithCounts = await Promise.all(profiles.map(async profile => {
+      const {
+        count: totalCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id);
+      const {
+        count: highPriorityCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id).eq("priority", "high");
+      const {
+        count: urgentCount
+      } = await supabase.from("analyses").select("*", {
+        count: "exact",
+        head: true
+      }).eq("assigned_to", profile.id).eq("priority", "urgent");
+      return {
+        ...profile,
+        case_count: totalCount || 0,
+        high_priority_count: highPriorityCount || 0,
+        urgent_count: urgentCount || 0,
+        roles: rolesByUser[profile.id] || []
+      };
     }));
+    setTeamMembers(membersWithCounts);
 
-    setMyTeams(teams);
+    // Get ALL cases in the system (not just assigned ones)
+    const {
+      count: allCasesCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    });
+    const {
+      count: allHighCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    }).eq("priority", "high");
+    const {
+      count: allUrgentCount
+    } = await supabase.from("analyses").select("*", {
+      count: "exact",
+      head: true
+    }).eq("priority", "urgent");
+    setTeamStats({
+      totalCases: allCasesCount || 0,
+      totalUrgent: allUrgentCount || 0,
+      totalHigh: allHighCount || 0,
+      avgCasesPerMember: membersWithCounts.length > 0 ? Math.round((allCasesCount || 0) / membersWithCounts.length) : 0
+    });
   };
-
-  const fetchTeamMembers = async (teamId: string) => {
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("*")
-      .eq("team_id", teamId)
-      .eq("status", "approved")
-      .order("created_at");
-
-    if (error) {
-      console.error("Error fetching team members:", error);
-      return;
+  const fetchMemberCases = async (memberId: string) => {
+    const {
+      data,
+      error
+    } = await supabase.from("analyses").select("id, client_name, file_name, priority, status, created_at").eq("assigned_to", memberId).order("created_at", {
+      ascending: false
+    });
+    if (!error && data) {
+      setMemberCases(data);
     }
-
-    const membersWithProfiles = await Promise.all(
-      (data || []).map(async (member) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, full_name, avatar_url")
-          .eq("id", member.user_id)
-          .single();
-
-        return {
-          ...member,
-          profiles: profile || { email: "", full_name: null, avatar_url: null },
-        };
-      })
-    );
-
-    setTeamMembers(membersWithProfiles);
   };
-
-  const fetchPendingRequests = async (teamId: string) => {
-    const { data, error } = await supabase
-      .from("team_members")
-      .select("*")
-      .eq("team_id", teamId)
-      .eq("status", "pending")
-      .order("created_at");
-
-    if (error) {
-      console.error("Error fetching pending requests:", error);
-      return;
+  const fetchTeamSettings = async () => {
+    const {
+      data,
+      error
+    } = await supabase.from("team_settings").select("*").maybeSingle();
+    if (!error && data) {
+      setTeamSettings({
+        id: data.id,
+        team_name: data.team_name,
+        team_icon: data.team_icon,
+        logo_url: data.logo_url
+      });
     }
-
-    const requestsWithProfiles = await Promise.all(
-      (data || []).map(async (request) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("email, full_name, avatar_url")
-          .eq("id", request.user_id)
-          .single();
-
-        return {
-          ...request,
-          profiles: profile || { email: "", full_name: null, avatar_url: null },
-        };
-      })
-    );
-
-    setPendingRequests(requestsWithProfiles);
   };
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
 
-  const createTeam = async () => {
-    if (!newTeamName.trim()) {
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
       toast({
         title: "Error",
-        description: "Please enter a team name",
-        variant: "destructive",
+        description: "Please upload an image file",
+        variant: "destructive"
       });
       return;
     }
 
-    const { data, error } = await supabase
-      .from("teams")
-      .insert({
-        name: newTeamName,
-        description: newTeamDescription,
-        created_by: user?.id,
-      })
-      .select()
-      .single();
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      // Delete old logo if exists
+      if (teamSettings.logo_url) {
+        const oldPath = teamSettings.logo_url.split("/").pop();
+        if (oldPath) {
+          await supabase.storage.from("team-logos").remove([oldPath]);
+        }
+      }
 
-    if (error) {
+      // Upload new logo
+      const fileExt = file.name.split(".").pop();
+      const fileName = `team-logo-${Date.now()}.${fileExt}`;
+      const {
+        error: uploadError
+      } = await supabase.storage.from("team-logos").upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: false
+      });
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const {
+        data: {
+          publicUrl
+        }
+      } = supabase.storage.from("team-logos").getPublicUrl(fileName);
+
+      // Update team settings
+      const {
+        error: updateError
+      } = await supabase.from("team_settings").update({
+        logo_url: publicUrl
+      }).eq("id", teamSettings.id);
+      if (updateError) throw updateError;
+      toast({
+        title: "Success",
+        description: "Team logo updated successfully"
+      });
+      fetchTeamSettings();
+    } catch (error: any) {
+      console.error("Error uploading logo:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload logo",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+  const handleRemoveLogo = async () => {
+    if (!teamSettings.logo_url) return;
+    try {
+      // Delete from storage
+      const path = teamSettings.logo_url.split("/").pop();
+      if (path) {
+        await supabase.storage.from("team-logos").remove([path]);
+      }
+
+      // Update team settings
+      const {
+        error
+      } = await supabase.from("team_settings").update({
+        logo_url: null
+      }).eq("id", teamSettings.id);
+      if (error) throw error;
+      toast({
+        title: "Success",
+        description: "Team logo removed"
+      });
+      fetchTeamSettings();
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: "Team created successfully!",
-    });
-
-    setNewTeamName("");
-    setNewTeamDescription("");
-    setCreateDialogOpen(false);
-    fetchAllTeams();
-    fetchMyTeams();
   };
-
-  const joinTeam = async (teamId: string) => {
-    const { error } = await supabase
-      .from("team_members")
-      .insert({
-        team_id: teamId,
-        user_id: user?.id,
-        role: "member",
-        status: "pending",
+  const handleStartEditTeamSettings = () => {
+    setEditingTeamSettings(true);
+    setEditingTeamSettingsName(teamSettings.team_name);
+    setEditingTeamSettingsIcon(teamSettings.team_icon);
+  };
+  const handleCancelEditTeamSettings = () => {
+    setEditingTeamSettings(false);
+    setEditingTeamSettingsName("");
+    setEditingTeamSettingsIcon("");
+  };
+  const handleSaveTeamSettings = async () => {
+    try {
+      const {
+        error
+      } = await supabase.from("team_settings").update({
+        team_name: editingTeamSettingsName,
+        team_icon: editingTeamSettingsIcon
+      }).eq("id", teamSettings.id);
+      if (error) throw error;
+      toast({
+        title: "Success",
+        description: "Team settings updated"
       });
-
-    if (error) {
+      handleCancelEditTeamSettings();
+      fetchTeamSettings();
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: "Join request sent! Waiting for admin approval.",
-    });
-
-    fetchAllTeams();
   };
-
-  const approveRequest = async (membershipId: string) => {
-    const { error } = await supabase
-      .from("team_members")
-      .update({ status: "approved" })
-      .eq("id", membershipId);
-
-    if (error) {
+  const getInitials = (name: string | null, email: string) => {
+    if (name) {
+      return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    }
+    return email.slice(0, 2).toUpperCase();
+  };
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "destructive";
+      case "high":
+        return "default";
+      case "medium":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+  const handleAddRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
+    try {
+      const {
+        error
+      } = await supabase.from("user_roles").insert({
+        user_id: memberId,
+        role: role as any
+      });
+      if (error) throw error;
+      toast({
+        title: "Success",
+        description: `Role '${role}' added`
+      });
+      fetchTeamData();
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: "Member approved!",
-    });
-
-    fetchPendingRequests(selectedTeam!.id);
-    fetchTeamMembers(selectedTeam!.id);
-    fetchAllTeams();
   };
-
-  const rejectRequest = async (membershipId: string) => {
-    const { error } = await supabase
-      .from("team_members")
-      .delete()
-      .eq("id", membershipId);
-
-    if (error) {
+  const handleRemoveRole = async (memberId: string, role: "admin" | "investigator" | "attorney" | "advocate") => {
+    try {
+      const {
+        error
+      } = await supabase.from("user_roles").delete().eq("user_id", memberId).eq("role", role);
+      if (error) throw error;
+      toast({
+        title: "Success",
+        description: `Role '${role}' removed`
+      });
+      fetchTeamData();
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
-      return;
     }
-
-    toast({
-      title: "Success",
-      description: "Request rejected",
-    });
-
-    fetchPendingRequests(selectedTeam!.id);
   };
-
-  const removeMember = async (membershipId: string) => {
-    const { error } = await supabase
-      .from("team_members")
-      .delete()
-      .eq("id", membershipId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Success",
-      description: "Member removed",
-    });
-
-    fetchTeamMembers(selectedTeam!.id);
-    fetchAllTeams();
-  };
-
-  const makeAdmin = async (membershipId: string) => {
-    const { error } = await supabase
-      .from("team_members")
-      .update({ role: "admin" })
-      .eq("id", membershipId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    toast({
-      title: "Success",
-      description: "Member promoted to admin",
-    });
-
-    fetchTeamMembers(selectedTeam!.id);
-  };
-
-  const isTeamAdmin = (team: Team | null) => {
-    if (!team || !user) return false;
-    return team.user_membership?.role === "admin" && team.user_membership?.status === "approved";
-  };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <Header user={user} />
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground">Teams</h1>
-            <p className="text-muted-foreground mt-2">Create or join teams to collaborate</p>
-          </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Team
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create a New Team</DialogTitle>
-                <DialogDescription>
-                  Start a new team and invite members to collaborate
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Team Name</label>
-                  <Input
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                    placeholder="e.g., Legal Team Alpha"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <Textarea
-                    value={newTeamDescription}
-                    onChange={(e) => setNewTeamDescription(e.target.value)}
-                    placeholder="Brief description of the team's purpose..."
-                  />
-                </div>
-                <Button onClick={createTeam} className="w-full">
-                  Create Team
-                </Button>
+
+      <main className="container mx-auto px-4 py-6">
+        {/* Team Header Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {editingTeamSettings ? <div className="flex items-center gap-3">
+                    <Input value={editingTeamSettingsIcon} onChange={e => setEditingTeamSettingsIcon(e.target.value)} placeholder="Icon" className="w-20 text-2xl text-center" maxLength={2} />
+                    <Input value={editingTeamSettingsName} onChange={e => setEditingTeamSettingsName(e.target.value)} placeholder="Team Name" className="text-2xl font-bold" />
+                    <Button size="sm" onClick={handleSaveTeamSettings}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={handleCancelEditTeamSettings}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div> : <>
+                    {teamSettings.logo_url ? <div className="relative group">
+                        <img src={teamSettings.logo_url} alt="Team Logo" className="w-16 h-16 object-contain rounded-lg border border-border" />
+                        {isAdmin && <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                            <label htmlFor="logo-upload" className="cursor-pointer">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" asChild>
+                                <span>
+                                  <Upload className="h-3 w-3" />
+                                </span>
+                              </Button>
+                            </label>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white hover:text-white" onClick={handleRemoveLogo}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>}
+                      </div> : <div className="relative group">
+                        <div className="text-4xl">{teamSettings.team_icon}</div>
+                        {isAdmin && <label htmlFor="logo-upload" className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center cursor-pointer">
+                            <Upload className="h-5 w-5 text-white" />
+                          </label>}
+                      </div>}
+                    <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={!isAdmin || uploadingLogo} />
+                    <div>
+                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                        {teamSettings.team_name}
+                        {isAdmin && <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleStartEditTeamSettings}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">View team members and their workload distribution</p>
+                    </div>
+                  </>}
               </div>
-            </DialogContent>
-          </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Team Statistics Overview */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Team Size</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{teamMembers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Active members</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Total Cases</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{teamStats.totalCases}</div>
+              <p className="text-xs text-muted-foreground mt-1">Active cases</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">High Priority</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{teamStats.totalHigh}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {teamStats.totalCases > 0 ? Math.round(teamStats.totalHigh / teamStats.totalCases * 100) : 0}% of
+                total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <p className="text-sm font-medium text-muted-foreground">Urgent</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-red-600">{teamStats.totalUrgent}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {teamStats.totalCases > 0 ? Math.round(teamStats.totalUrgent / teamStats.totalCases * 100) : 0}% of
+                total
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        <Tabs defaultValue="all" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="all">All Teams</TabsTrigger>
-            <TabsTrigger value="my-teams">My Teams ({myTeams.length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-4">
-            {allTeams.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No teams yet. Create the first one!</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {allTeams.map((team) => (
-                  <Card key={team.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        {team.name}
-                        {team.user_membership?.role === "admin" && (
-                          <Badge variant="secondary">
-                            <Shield className="mr-1 h-3 w-3" />
-                            Admin
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription>
-                        {team.description || "No description"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">
-                          {team.member_count} {team.member_count === 1 ? "member" : "members"}
-                        </span>
-                        {!team.user_membership ? (
-                          <Button size="sm" onClick={() => joinTeam(team.id)}>
-                            <UserPlus className="mr-2 h-4 w-4" />
-                            Join
-                          </Button>
-                        ) : team.user_membership.status === "pending" ? (
-                          <Badge variant="outline">Pending</Badge>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedTeam(team)}
-                          >
-                            View
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+        {/* Team Members Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Team Members</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Click on a member to view their cases</p>
               </div>
-            )}
-          </TabsContent>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {teamMembers.map(member => <div key={member.id} className={`flex items-center gap-4 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${selectedMember === member.id ? "border-primary bg-primary/5" : "border-border"}`} onClick={() => setSelectedMember(member.id)}>
+                  {/* Avatar */}
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={member.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(member.full_name, member.email)}
+                    </AvatarFallback>
+                  </Avatar>
 
-          <TabsContent value="my-teams" className="space-y-4">
-            {myTeams.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">You haven't joined any teams yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {myTeams.map((team) => (
-                  <Card key={team.id} className="hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        {team.name}
-                        {team.user_membership?.role === "admin" && (
-                          <Badge variant="secondary">
-                            <Shield className="mr-1 h-3 w-3" />
-                            Admin
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <CardDescription>
-                        {team.description || "No description"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setSelectedTeam(team)}
-                      >
-                        Manage Team
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                  {/* Name and Role */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-sm truncate">{member.full_name || member.email}</h4>
+                      {isAdmin && <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
+                              <Shield className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent onClick={e => e.stopPropagation()}>
+                            <DialogHeader>
+                              <DialogTitle>Manage Roles</DialogTitle>
+                              <DialogDescription>
+                                Assign or remove roles for {member.full_name || member.email}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <p className="text-sm font-medium mb-2">Current Roles:</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {member.roles.length === 0 ? <Badge variant="outline">No roles assigned</Badge> : member.roles.map(role => <Badge key={role} variant="secondary" className="flex items-center gap-1">
+                                        {role}
+                                        <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveRole(member.id, role as any)} />
+                                      </Badge>)}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium mb-2">Add Role:</p>
+                                <Select onValueChange={role => handleAddRole(member.id, role as any)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="attorney">Attorney</SelectItem>
+                                    <SelectItem value="investigator">Investigator</SelectItem>
+                                    <SelectItem value="advocate">Advocate</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {member.roles.length > 0 ? member.roles.map(role => <Badge key={role} variant="outline" className="text-xs">
+                            {role}
+                          </Badge>) : <span className="text-xs text-muted-foreground">No role assigned</span>}
+                    </div>
+                  </div>
 
-        <Dialog open={!!selectedTeam} onOpenChange={() => setSelectedTeam(null)}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedTeam?.name}
-                {isTeamAdmin(selectedTeam) && (
-                  <Badge variant="secondary">
-                    <Shield className="mr-1 h-3 w-3" />
-                    Admin
-                  </Badge>
-                )}
-              </DialogTitle>
-              <DialogDescription>{selectedTeam?.description}</DialogDescription>
-            </DialogHeader>
+                  {/* Stats */}
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="text-center">
+                      <p className="font-bold text-lg">{member.case_count}</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-lg text-orange-600">{member.high_priority_count}</p>
+                      <p className="text-xs text-muted-foreground">High</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-lg text-red-600">{member.urgent_count}</p>
+                      <p className="text-xs text-muted-foreground">Urgent</p>
+                    </div>
+                  </div>
+                </div>)}
+            </div>
+          </CardContent>
+        </Card>
 
-            <Tabs defaultValue="members" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="members">
-                  Members ({teamMembers.length})
-                </TabsTrigger>
-                {isTeamAdmin(selectedTeam) && (
-                  <TabsTrigger value="pending">
-                    Pending Requests ({pendingRequests.length})
-                  </TabsTrigger>
-                )}
-              </TabsList>
-
-              <TabsContent value="members" className="mt-4">
-                <Table>
+        {selectedMember && <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>
+                Cases for{" "}
+                {teamMembers.find(m => m.id === selectedMember)?.full_name || teamMembers.find(m => m.id === selectedMember)?.email}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {memberCases.length === 0 ? <p className="text-center text-muted-foreground py-8">No cases assigned</p> : <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      {isTeamAdmin(selectedTeam) && <TableHead>Actions</TableHead>}
+                      <TableHead>Case Name</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {teamMembers.map((member) => (
-                      <TableRow key={member.id}>
+                    {memberCases.map(case_ => <TableRow key={case_.id} className="cursor-pointer" onClick={() => navigate("/")}>
+                        <TableCell className="font-medium">{case_.client_name || case_.file_name}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar>
-                              <AvatarFallback>
-                                {member.profiles.full_name?.[0] || member.profiles.email[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span>{member.profiles.full_name || "Unknown"}</span>
-                          </div>
+                          <Badge variant={getPriorityColor(case_.priority)}>{case_.priority}</Badge>
                         </TableCell>
-                        <TableCell>{member.profiles.email}</TableCell>
                         <TableCell>
-                          <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                            {member.role}
-                          </Badge>
+                          <Badge variant="outline">{case_.status}</Badge>
                         </TableCell>
-                        {isTeamAdmin(selectedTeam) && (
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {member.role !== "admin" && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => makeAdmin(member.id)}
-                                >
-                                  Make Admin
-                                </Button>
-                              )}
-                              {member.user_id !== user?.id && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => removeMember(member.id)}
-                                >
-                                  Remove
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    ))}
+                        <TableCell className="text-muted-foreground">
+                          {new Date(case_.created_at).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>)}
                   </TableBody>
-                </Table>
-              </TabsContent>
-
-              {isTeamAdmin(selectedTeam) && (
-                <TabsContent value="pending" className="mt-4">
-                  {pendingRequests.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No pending requests
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>User</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Requested</TableHead>
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pendingRequests.map((request) => (
-                          <TableRow key={request.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Avatar>
-                                  <AvatarFallback>
-                                    {request.profiles.full_name?.[0] || request.profiles.email[0]}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span>{request.profiles.full_name || "Unknown"}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>{request.profiles.email}</TableCell>
-                            <TableCell>
-                              {new Date(request.created_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => approveRequest(request.id)}
-                                >
-                                  <Check className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => rejectRequest(request.id)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </TabsContent>
-              )}
-            </Tabs>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
+                </Table>}
+            </CardContent>
+          </Card>}
+      </main>
+    </div>;
 }
