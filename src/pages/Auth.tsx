@@ -152,10 +152,7 @@ const Auth = () => {
         {/* Function Overview Section */}
         <div className="hidden lg:block space-y-6">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary border border-primary/20">
-              <Brain className="w-4 h-4" />
-              <span className="text-sm font-medium">AI-Powered Analysis</span>
-            </div>
+            
             <h1 className="text-4xl font-bold text-foreground">
               #JusticeLens
             </h1>
@@ -266,36 +263,36 @@ const Auth = () => {
                 {createTeam ? <div className="space-y-3">
                     <Input placeholder="Team Name" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} />
                     <Button className="w-full" disabled={loading || !newTeamName} onClick={async () => {
-                setLoading(true);
-                try {
-                  const {
-                    data: {
-                      user
-                    }
-                  } = await supabase.auth.getUser();
-                  if (!user) throw new Error("Not authenticated");
-                  const {
-                    error
-                  } = await supabase.from("teams").insert({
-                    name: newTeamName,
-                    created_by: user.id
-                  });
-                  if (error) throw error;
-                  toast({
-                    title: "Team created!",
-                    description: "You've been added as admin."
-                  });
-                  navigate("/");
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message,
-                    variant: "destructive"
-                  });
-                } finally {
-                  setLoading(false);
-                }
-              }}>
+                  setLoading(true);
+                  try {
+                    const {
+                      data: {
+                        user
+                      }
+                    } = await supabase.auth.getUser();
+                    if (!user) throw new Error("Not authenticated");
+                    const {
+                      error
+                    } = await supabase.from("teams").insert({
+                      name: newTeamName,
+                      created_by: user.id
+                    });
+                    if (error) throw error;
+                    toast({
+                      title: "Team created!",
+                      description: "You've been added as admin."
+                    });
+                    navigate("/");
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message,
+                      variant: "destructive"
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}>
                       Create Team
                     </Button>
                   </div> : <div className="space-y-3">
@@ -304,38 +301,38 @@ const Auth = () => {
                       {teams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
                     </select>
                     <Button className="w-full" disabled={loading || !selectedTeam} onClick={async () => {
-                setLoading(true);
-                try {
-                  const {
-                    data: {
-                      user
-                    }
-                  } = await supabase.auth.getUser();
-                  if (!user) throw new Error("Not authenticated");
-                  const {
-                    error
-                  } = await supabase.from("team_members").insert({
-                    team_id: selectedTeam,
-                    user_id: user.id,
-                    role: "member",
-                    status: "pending"
-                  });
-                  if (error) throw error;
-                  toast({
-                    title: "Request sent!",
-                    description: "Waiting for admin approval."
-                  });
-                  navigate("/");
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message,
-                    variant: "destructive"
-                  });
-                } finally {
-                  setLoading(false);
-                }
-              }}>
+                  setLoading(true);
+                  try {
+                    const {
+                      data: {
+                        user
+                      }
+                    } = await supabase.auth.getUser();
+                    if (!user) throw new Error("Not authenticated");
+                    const {
+                      error
+                    } = await supabase.from("team_members").insert({
+                      team_id: selectedTeam,
+                      user_id: user.id,
+                      role: "member",
+                      status: "pending"
+                    });
+                    if (error) throw error;
+                    toast({
+                      title: "Request sent!",
+                      description: "Waiting for admin approval."
+                    });
+                    navigate("/");
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message,
+                      variant: "destructive"
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}>
                       Request to Join
                     </Button>
                   </div>}
