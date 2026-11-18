@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# JusticeLens
 
-## Project info
+A case-review tool for legal advocates that reads parole hearing transcripts and flags what deserves a closer look: claims of innocence, signs of bias, and the language patterns that shape parole decisions.
 
-**URL**: https://lovable.dev/projects/02e97d99-9b07-4810-bf57-bdacc31233b4
+## The problem
 
-## How can I edit this code?
+Parole hearing transcripts are long, and advocates reviewing many cases can miss a buried claim of innocence or a pattern in how a commissioner talks to people. JusticeLens screens each transcript so a person knows where to look first. It does not replace legal review.
 
-There are several ways of editing your application.
+## What it does
 
-**Use Lovable**
+- **Upload transcripts** as `.txt` or `.pdf` files, one at a time or in bulk.
+- **Run four analysis modules** on each one:
+  - **Innocence claims:** explicit and implicit statements of innocence or wrongful conviction, with quotes.
+  - **Bias and fairness audit:** stigmatizing language and possible bias patterns.
+  - **Advocate fact sheet:** a short summary of the key facts and evidence.
+  - **Language patterns:** how often words like "insight", "remorse" and "accountability" come up, since they tend to weigh heavily in parole decisions.
+- **Score and prioritize.** Each case gets a 0 to 100 screening score built from the innocence claims, wrongful-conviction issues and evidence quality it found, and is given a priority from that score. The in-app guide explains how the score is built.
+- **Track commissioners.** A commissioners page collects bias findings across every case a commissioner heard.
+- **Manage the work as a team.** Cases move through a Kanban pipeline, can be assigned to teammates, and have comments, an activity timeline and notifications. Team members join through invite links.
+- **Produce a legal memo** that can be formatted and printed as a PDF.
+- **Look up people named in a transcript** from public sources.
+- **Send a case to Lawmatics,** a legal case-management system.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/02e97d99-9b07-4810-bf57-bdacc31233b4) and start prompting.
+## How it works
 
-Changes made via Lovable will be committed automatically to this repo.
+The React front end uses Supabase for sign-in, the database and file storage. Supabase Edge Functions do the heavy work:
 
-**Use your preferred IDE**
+| Function | Job |
+| :--- | :--- |
+| `upload-transcript` | Stores the transcript file in Supabase Storage |
+| `analyze-transcript` | Runs the selected modules with Google Gemini 2.5 Flash and returns structured results |
+| `format-legal-memo` | Turns the analysis into a printable memo |
+| `search-person-info` | Looks up people mentioned in a transcript |
+| `transfer-to-lawmatics` | Sends a case to Lawmatics |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+The AI calls go through the Lovable AI Gateway.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Run it
 
-Follow these steps:
+You need Node.js 18 or newer.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+git clone https://github.com/moazzanimran2007/justicelens.git
+cd justicelens
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The front end connects to the Supabase project named in `.env`. To run your own backend, create a Supabase project, apply the migrations in `supabase/migrations`, deploy the functions in `supabase/functions` and set `LOVABLE_API_KEY` (plus `LAWMATICS_API_KEY` and `LAWMATICS_API_URL` for the Lawmatics export) as function secrets.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Tech stack
 
-**Use GitHub Codespaces**
+React and TypeScript on Vite, Tailwind CSS with shadcn/ui, Supabase (Auth, Postgres with row-level security, Storage and Edge Functions), Google Gemini 2.5 Flash, and a Toolhouse agent for the chat assistant. Built with Lovable.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Important
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/02e97d99-9b07-4810-bf57-bdacc31233b4) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The screening score and every finding are generated by AI. They are a way to decide which cases to read first, not legal advice, and every result needs human review.
